@@ -62,10 +62,22 @@ pub fn allow_navigation<R: Runtime>(app: &AppHandle<R>, url: &Url) -> bool {
 }
 
 pub fn open_external<R: Runtime>(app: &AppHandle<R>, url: &Url) {
-    let target = unwrap_link_shim(url).map_or_else(|| url.clone(), strip_tracking);
+    let Some(target) = external_target(url) else {
+        eprintln!("không mở {url}: scheme \"{}\" không được phép", url.scheme());
+        return;
+    };
     if let Err(err) = app.opener().open_url(target.as_str(), None::<&str>) {
         eprintln!("could not open {target}: {err}");
     }
+}
+
+/// URL sẽ được giao cho hệ điều hành mở, hoặc None nếu scheme không an toàn.
+/// Trang web gọi được window.open() với file:, smb:, search-ms:..., và hệ điều
+/// hành sẽ mở thẳng chúng, nên chỉ cho qua đúng các scheme mà allow_navigation
+/// gửi ra ngoài.
+fn external_target(url: &Url) -> Option<Url> {
+    let target = unwrap_link_shim(url).map_or_else(|| url.clone(), strip_tracking);
+    matches!(target.scheme(), "http" | "https" | "mailto" | "tel").then_some(target)
 }
 
 fn unwrap_link_shim(url: &Url) -> Option<Url> {
@@ -141,5 +153,24 @@ mod tests {
     fn link_shim_must_point_to_the_web() {
         let shim = url("https://l.facebook.com/l.php?u=javascript%3Aalert(1)");
         assert!(unwrap_link_shim(&shim).is_none());
+    }
+
+    #[test]
+    fn only_web_mail_and_phone_links_leave_the_app() {
+        let shim = url("https://l.facebook.com/l.php?u=https%3A%2F%2Fexample.com%2F%3Ffbclid%3Dabc");
+        assert_eq!(external_target(&shim).unwrap().as_str(), "https://example.com/");
+        assert!(external_target(&url("https://github.com/toanbku/fmess")).is_some());
+        assert!(external_target(&url("mailto:a@example.com")).is_some());
+        assert!(external_target(&url("tel:+84123456789")).is_some());
+        for blocked in [
+            "file:///Applications/Calculator.app",
+            "smb://attacker.example/share",
+            "search-ms:query=x&crumb=location:\\\\attacker.example\\share",
+            "ms-msdt:/id PCWDiagnostic",
+            "fb://profile/1",
+            "javascript:alert(1)",
+        ] {
+            assert!(external_target(&url(blocked)).is_none(), "{blocked} phải bị chặn");
+        }
     }
 }
