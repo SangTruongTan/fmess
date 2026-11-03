@@ -63,7 +63,7 @@ pub fn allow_navigation<R: Runtime>(app: &AppHandle<R>, url: &Url) -> bool {
 
 pub fn open_external<R: Runtime>(app: &AppHandle<R>, url: &Url) {
     let Some(target) = external_target(url) else {
-        eprintln!("không mở {url}: scheme \"{}\" không được phép", url.scheme());
+        eprintln!("not opening {url}: the \"{}\" scheme is not allowed", url.scheme());
         return;
     };
     if let Err(err) = app.opener().open_url(target.as_str(), None::<&str>) {
@@ -71,10 +71,10 @@ pub fn open_external<R: Runtime>(app: &AppHandle<R>, url: &Url) {
     }
 }
 
-/// URL sẽ được giao cho hệ điều hành mở, hoặc None nếu scheme không an toàn.
-/// Trang web gọi được window.open() với file:, smb:, search-ms:..., và hệ điều
-/// hành sẽ mở thẳng chúng, nên chỉ cho qua đúng các scheme mà allow_navigation
-/// gửi ra ngoài.
+/// The URL to hand to the OS opener, or None if its scheme isn't safe to open.
+/// A page can call window.open() with file:, smb:, search-ms: and so on, and the
+/// OS would open them as is, so only the schemes allow_navigation sends out of
+/// the app get through.
 fn external_target(url: &Url) -> Option<Url> {
     let target = unwrap_link_shim(url).map_or_else(|| url.clone(), strip_tracking);
     matches!(target.scheme(), "http" | "https" | "mailto" | "tel").then_some(target)
@@ -170,7 +170,7 @@ mod tests {
             "fb://profile/1",
             "javascript:alert(1)",
         ] {
-            assert!(external_target(&url(blocked)).is_none(), "{blocked} phải bị chặn");
+            assert!(external_target(&url(blocked)).is_none(), "{blocked} should be blocked");
         }
     }
 }
