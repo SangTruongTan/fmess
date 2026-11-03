@@ -104,6 +104,11 @@
       return 'granted';
     }
 
+    // tauri-plugin-notification's page script sets it once it has asked
+    // fMess (is_permission_granted), after this class took its place; in
+    // strict code a property with no setter would throw.
+    static set permission(_) {}
+
     static requestPermission(callback) {
       callback?.('granted');
       return Promise.resolve('granted');
