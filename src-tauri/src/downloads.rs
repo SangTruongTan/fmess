@@ -8,6 +8,8 @@ use std::{path::PathBuf, sync::Mutex};
 use tauri::{webview::DownloadEvent, AppHandle, Runtime, Webview};
 use tauri_plugin_opener::OpenerExt;
 
+use crate::MAIN_WINDOW;
+
 /// Where each download in progress is saved, by its URL: macOS doesn't say
 /// where when one finishes.
 static SAVING: Mutex<Vec<(String, PathBuf)>> = Mutex::new(Vec::new());
@@ -26,6 +28,8 @@ pub fn handle<R: Runtime>(webview: Webview<R>, event: DownloadEvent<'_>) -> bool
             SAVING.lock().unwrap().push((url.to_string(), destination.clone()));
         }
         DownloadEvent::Finished { url, path, success } => {
+            // Two downloads of one URL at once may be told apart wrongly
+            // here, but both hold the same file.
             let url = url.to_string();
             let saving = {
                 let mut saving = SAVING.lock().unwrap();
@@ -52,7 +56,9 @@ fn finished<R: Runtime>(webview: &Webview<R>, path: Option<PathBuf>, success: bo
             bounce_downloads_stack(&path);
             let mut saved = SAVED.lock().unwrap();
             saved.push(path);
-            Some(saved.len() - 1)
+            // Only the main window may call show_download (see
+            // capabilities/messenger-web.json): a popup gets no button.
+            (webview.label() == MAIN_WINDOW).then(|| saved.len() - 1)
         }
         _ => None,
     };

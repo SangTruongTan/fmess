@@ -82,3 +82,15 @@
     clearTimeout(downloadedHide);
     downloadedHide = setTimeout(() => document.getElementById(DOWNLOADED)?.classList.remove('shown'), ms);
   };
+
+  // A photo or video from an encrypted chat downloads from a blob: URL with
+  // no file name, which WebKit saves as "Unknown", "Unknown (1)"...: it gets
+  // the blob's id instead, as in Chrome (WebKit adds the extension).
+  window.addEventListener(
+    'click',
+    (event) => {
+      const link = event.target instanceof Element && event.target.closest('a[download][href^="blob:"]');
+      if (link && !link.getAttribute('download')) link.setAttribute('download', link.href.split('/').pop());
+    },
+    true
+  );
