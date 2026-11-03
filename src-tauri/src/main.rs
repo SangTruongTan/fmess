@@ -76,6 +76,7 @@ fn main() {
             themes::remove_theme,
             icon::choose_app_icon,
             icon::reset_app_icon,
+            update::check_for_updates,
             webview::set_viewer_open,
             menu::show_account_menu,
             menu::menu_shortcut,

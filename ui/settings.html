@@ -206,6 +206,12 @@
       </span>
       <span class="switch"><input type="checkbox" data-key="closeToTray"><span></span></span>
     </label>
+    <div class="row">
+      <span class="label"><span data-i18n="updates">Updates</span>
+        <span class="hint"><span id="version"></span> <span data-i18n="updatesHint">You'll be told when a new version is out; check now if you'd rather not wait.</span></span>
+      </span>
+      <button type="button" id="check-updates" data-i18n="checkNow">Check Now</button>
+    </div>
   </div>
 
   <h2>Messenger</h2>
@@ -385,6 +391,9 @@
     startHiddenHint: 'Khi tự mở lúc đăng nhập, fMess nằm ở <span data-tray></span> thay vì hiện cửa sổ.',
     closeToTray: 'Vẫn chạy khi đóng cửa sổ',
     closeToTrayHint: 'fMess nằm ở <span data-tray></span> nên vẫn nhận được tin nhắn.',
+    updates: 'Cập nhật',
+    updatesHint: 'Có bản mới sẽ tự báo, không muốn chờ thì bấm kiểm tra ngay.',
+    checkNow: 'Kiểm tra ngay',
     activeStatus: 'Trạng thái hoạt động',
     activeStatusHint: 'Ai thấy được bạn đang hoạt động.',
     change: 'Đổi…',
@@ -642,6 +651,14 @@
       (err) => { result.textContent = say(`Couldn't send: ${err}`, `Không gửi được: ${err}`); },
     );
   });
+  // Its answer (up to date, a new version to install, or an error) is a
+  // dialog from fMess, as from the menu's Check for Updates….
+  document.getElementById('check-updates').addEventListener('click', () => {
+    invoke('check_for_updates').catch(showError);
+  });
+  invoke('plugin:app|version').then((version) => {
+    document.getElementById('version').textContent = `fMess ${version}.`;
+  }, () => {});
   invoke('get_settings').then(render, (err) => { errorBox.textContent = String(err); });
   // Messenger's preferences may change while this is
   // open: on the phone, in Messenger's own dialog, or by a change made here.
