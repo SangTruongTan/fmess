@@ -11,7 +11,7 @@ use tauri::{
 
 use crate::{
     i18n::{self, pick, Lang},
-    icon, links,
+    downloads, icon, links,
     settings::{self, Settings},
     AUTOSTART_ARG, MAIN_WINDOW,
 };
@@ -258,8 +258,7 @@ fn configure<'a, R: Runtime, M: Manager<R>>(
             allowed
         })
         .on_new_window(move |url, features| open_popup(&popup_app, url, features))
-        // Without a download handler, macOS cancels every download.
-        .on_download(|_, _| true)
+        .on_download(downloads::handle)
         // Tauri takes files dropped on the window for itself (as its own
         // events) and keeps them from the page, so a file or screenshot
         // dragged into a chat did nothing; Messenger takes them as in a browser.

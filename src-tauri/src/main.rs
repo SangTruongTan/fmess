@@ -3,6 +3,7 @@
 
 mod about;
 mod badge;
+mod downloads;
 mod i18n;
 mod icon;
 mod links;
@@ -54,6 +55,7 @@ fn main() {
             notify::clear_notifications,
             notify::test_notification,
             badge::set_unread_count,
+            downloads::show_download,
             settings::get_settings,
             settings::update_settings,
             settings::sync_messenger_prefs,
