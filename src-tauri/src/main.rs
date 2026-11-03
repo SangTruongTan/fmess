@@ -43,6 +43,14 @@ fn main() {
             tauri_plugin_window_state::Builder::default()
                 // Closing only hides the window, so never restore it hidden.
                 .with_state_flags(StateFlags::all() & !StateFlags::VISIBLE)
+                // Not popups: they open centred on fMess's window anyway. On
+                // Windows restoring one froze fMess. A popup is built on the
+                // main thread, inside WebView2's new-window callback, and this
+                // plugin moved it while Tauri held its plugin lock; the move's
+                // own window events then waited for that lock forever. Labels
+                // start again at popup-1 each run, so every call after the
+                // first one closed hung.
+                .with_filter(|label| !label.starts_with(webview::POPUP_PREFIX))
                 .build(),
         )
         .plugin(tauri_plugin_autostart::Builder::new().arg(AUTOSTART_ARG).build())

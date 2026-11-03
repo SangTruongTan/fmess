@@ -17,6 +17,8 @@ use crate::{
 };
 
 pub const SETTINGS_WINDOW: &str = "settings";
+/// Labels of the windows pages open (calls, the photo viewer): popup-1, popup-2...
+pub const POPUP_PREFIX: &str = "popup-";
 
 /// Meta shut messenger.com down in April 2026; chats on the web live here now.
 const MESSAGES_URL: &str = "https://www.facebook.com/messages/";
@@ -337,7 +339,7 @@ fn open_popup<R: Runtime>(
     #[cfg(debug_assertions)]
     eprintln!("[popup] in app {}", crate::probe::loggable(&url));
     static NEXT_POPUP: AtomicUsize = AtomicUsize::new(1);
-    let label = format!("popup-{}", NEXT_POPUP.fetch_add(1, Ordering::Relaxed));
+    let label = format!("{POPUP_PREFIX}{}", NEXT_POPUP.fetch_add(1, Ordering::Relaxed));
     let size = features.size().map(|size| (size.width, size.height));
     let mut builder = WebviewWindowBuilder::new(app, &label, WebviewUrl::External(url))
         .title(settings::current(app).app_name())
