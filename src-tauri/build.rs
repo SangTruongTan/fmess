@@ -44,6 +44,7 @@ fn main() {
                 "choose_app_icon",
                 "reset_app_icon",
                 "show_download",
+                "check_for_updates",
             ])),
     )
     .expect("failed to run tauri-build");
