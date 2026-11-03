@@ -27,7 +27,7 @@ earlier part declares, and the numbers set that order.
 | 17-theme-hooks | Buttons, search box and quick reactions themes can ask for |
 | 18-notification-reply | Clicks on notifications and replying from them |
 | 19-account | Your picture and the account menu |
-| 19-downloads | Says when a download is done, with Show in Finder; names unnamed ones |
+| 19-downloads | Downloads from Facebook's CDN and unnamed ones; says when one is done, with Show in Finder |
 | 20-theme | The theme picked in Settings; settings from fMess; closes the function |
 
 The joined script is the same text the single file was; `node

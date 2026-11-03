@@ -46,7 +46,10 @@
   withRoot((root) => root.append(downloadedStyle));
 
   let downloadedHide = 0;
-  window.__fmessDownloaded = ({ ok, name, id }) => {
+  let downloadedStays = false;
+  // The box at the bottom saying `message`, with Show in Finder for the
+  // download fMess knows as `id`. It hides after a while unless `stays`.
+  const showDownloadBox = (message, id, stays = false) => {
     let box = document.getElementById(DOWNLOADED);
     if (!box) {
       box = document.createElement('div');
@@ -54,15 +57,14 @@
       box.setAttribute('role', 'status');
       // Kept while the pointer is on it, to reach the button.
       box.addEventListener('mouseenter', () => clearTimeout(downloadedHide));
-      box.addEventListener('mouseleave', () => hideDownloadedSoon(2000));
+      box.addEventListener('mouseleave', () => downloadedStays || hideDownloadedSoon(2000));
       document.body.append(box);
     }
     const text = document.createElement('span');
-    const file = name || say('the file', 'tệp');
-    text.textContent = ok ? say(`Downloaded ${file}`, `Đã tải về ${file}`) : say(`Couldn't download ${file}`, `Không tải được ${file}`);
-    text.title = text.textContent;
+    text.textContent = message;
+    text.title = message;
     box.replaceChildren(text);
-    if (ok && id != null) {
+    if (id != null) {
       const show = document.createElement('button');
       show.type = 'button';
       show.textContent = navigator.platform.startsWith('Mac')
@@ -76,21 +78,60 @@
     }
     box.getBoundingClientRect(); // so a new box slides in
     box.classList.add('shown');
-    hideDownloadedSoon(6000);
+    downloadedStays = stays;
+    if (stays) clearTimeout(downloadedHide);
+    else hideDownloadedSoon(6000);
   };
   const hideDownloadedSoon = (ms) => {
     clearTimeout(downloadedHide);
     downloadedHide = setTimeout(() => document.getElementById(DOWNLOADED)?.classList.remove('shown'), ms);
   };
+  window.__fmessDownloaded = ({ ok, name, id }) => {
+    const file = name || say('the file', 'tệp');
+    showDownloadBox(
+      ok ? say(`Downloaded ${file}`, `Đã tải về ${file}`) : say(`Couldn't download ${file}`, `Không tải được ${file}`),
+      ok ? id : null
+    );
+  };
 
-  // A photo or video from an encrypted chat downloads from a blob: URL with
-  // no file name, which WebKit saves as "Unknown", "Unknown (1)"...: it gets
-  // the blob's id instead, as in Chrome (WebKit adds the extension).
+  // In a chat that isn't encrypted, Download links to the photo or video on
+  // Facebook's CDN, another site, so WebKit and WebView2 don't download it but
+  // open a new window, which fMess sent to the browser. The page fetches it
+  // instead (the CDN allows that without cookies) and saves it from a blob:,
+  // under the CDN's file name.
+  const downloadFromCdn = async (href) => {
+    const name = decodeURIComponent(new URL(href).pathname.split('/').pop() || '');
+    showDownloadBox(say(`Downloading ${name}…`, `Đang tải ${name}…`), null, true);
+    try {
+      const response = await fetch(href, { credentials: 'omit' });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const url = URL.createObjectURL(await response.blob());
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = name;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch {
+      window.__fmessDownloaded({ ok: false, name });
+    }
+  };
+
   window.addEventListener(
     'click',
     (event) => {
-      const link = event.target instanceof Element && event.target.closest('a[download][href^="blob:"]');
-      if (link && !link.getAttribute('download')) link.setAttribute('download', link.href.split('/').pop());
+      const link = event.target instanceof Element && event.target.closest('a[download][href]');
+      if (!link || event.defaultPrevented) return;
+      if (link.protocol === 'https:' && link.hostname.endsWith('.fbcdn.net')) {
+        event.preventDefault();
+        downloadFromCdn(link.href);
+      } else if (link.protocol === 'blob:' && !link.getAttribute('download')) {
+        // A photo or video from an encrypted chat comes from a blob: URL with
+        // no file name, which WebKit saves as "Unknown", "Unknown (1)"...: it
+        // gets the blob's id instead, as in Chrome (WebKit adds the extension).
+        link.setAttribute('download', link.href.split('/').pop());
+      }
     },
     true
   );
