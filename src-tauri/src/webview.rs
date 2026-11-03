@@ -197,8 +197,34 @@ pub fn set_viewer_open<R: Runtime>(app: AppHandle<R>, open: bool) {
         let _ = window.set_title_bar_style(style);
         set_title_visible(&window, open);
     }
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(windows)]
+    allow_zoom_gestures(&app, open);
+    #[cfg(not(any(target_os = "macos", windows)))]
     let _ = (app, open);
+}
+
+/// Tauri turns WebView2's own zoom off (Ctrl + wheel, Ctrl + -/=, a touchpad
+/// pinch), and with it off the photo viewer's zoom (12-viewer.js) got no
+/// Ctrl + wheel or pinch on Windows: neither zoomed the photo. So it is on
+/// while the viewer is open. The viewer takes every Ctrl + wheel there, and
+/// fMess's shortcuts take Ctrl + -/=, so the page itself doesn't zoom.
+#[cfg(windows)]
+fn allow_zoom_gestures<R: Runtime>(app: &AppHandle<R>, on: bool) {
+    use webview2_com::Microsoft::Web::WebView2::Win32::ICoreWebView2Settings5;
+    use windows_core::Interface;
+
+    let Some(window) = app.get_webview_window(MAIN_WINDOW) else {
+        return;
+    };
+    let _ = window.with_webview(move |webview| unsafe {
+        let Ok(settings) = webview.controller().CoreWebView2().and_then(|core| core.Settings()) else {
+            return;
+        };
+        let _ = settings.SetIsZoomControlEnabled(on);
+        if let Ok(settings5) = settings.cast::<ICoreWebView2Settings5>() {
+            let _ = settings5.SetIsPinchZoomEnabled(on);
+        }
+    });
 }
 
 /// Shows or hides "fMess" in the title bar; Tauri only sets this at creation.
