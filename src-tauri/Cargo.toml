@@ -96,4 +96,7 @@ objc2-user-notifications = { version = "0.3.2", default-features = false, featur
 ] }
 
 [target.'cfg(windows)'.dependencies]
+# The photo viewer turns WebView2's zoom gestures on and off (webview.rs).
+webview2-com = "0.39"
+windows-core = "0.62"
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_System_Registry", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }

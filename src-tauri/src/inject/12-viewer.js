@@ -169,8 +169,10 @@
   function onViewerWheel(event) {
     if (!viewerOpen) return;
     if (event.ctrlKey) {
-      if (!startZoom()) return;
+      // Not the page's zoom: on Windows WebView2's is on while the viewer is
+      // open (set_viewer_open), so a Ctrl + wheel off the photo would zoom it.
       event.preventDefault();
+      if (!startZoom()) return;
       zoomAt(zoom.scale * Math.exp(-event.deltaY / 100), event.clientX, event.clientY);
     } else if (zoom) {
       event.preventDefault();
