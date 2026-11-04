@@ -200,6 +200,44 @@
     const name = texts.findIndex((part) => part.visible);
     return name >= 0 && texts.slice(name + 1).some((part) => !part.visible);
   };
+  // The chat rows that count as unread, each chat once. Messenger decides, by
+  // the test behind a row's "Unread message:" (MWPIsThreadUnread), and muted
+  // chats are left out, as the badge on Facebook's top bar leaves them out
+  // (MWChatBadgeCountUpdates): a busy muted group would otherwise keep the
+  // Dock badge up. A chat missing from Messenger's copy falls back to the
+  // row's hidden text.
+  const isMutedChat = (chat) => {
+    const until = int64(chat.muteExpireTimeMs);
+    return until === -1n || until > BigInt(Math.floor(serverNow()));
+  };
+  const unreadChats = async (rows) => {
+    let isUnreadInMessenger = null;
+    try {
+      await loadModules(['ReQL', 'LSDatabaseSingleton', 'MWPIsThreadUnread']);
+      const ReQL = window.require('ReQL');
+      const db = await window.require('LSDatabaseSingleton').LSDatabaseSingleton;
+      const { isThreadUnreadForViewer } = window.require('MWPIsThreadUnread');
+      if (typeof isThreadUnreadForViewer === 'function') {
+        isUnreadInMessenger = async (thread) => {
+          const chat = await ReQL.firstAsync(ReQL.fromTableAscending(db.tables.threads).getKeyRange(int64Key(thread)));
+          return chat ? isThreadUnreadForViewer(chat) && !isMutedChat(chat) : undefined;
+        };
+      }
+    } catch {}
+    const counted = new Set();
+    const unread = [];
+    for (const row of rows) {
+      const href = row.getAttribute('href');
+      if (counted.has(href)) continue;
+      counted.add(href);
+      const thread = href?.match(/\/t\/(\d+)/)?.[1];
+      const known = thread && isUnreadInMessenger ? await isUnreadInMessenger(thread).catch(() => undefined) : undefined;
+      if (known ?? isUnreadChat(row)) unread.push(row);
+    }
+    // Whether Messenger's copy answered: then no chat means none to count.
+    unread.fromMessenger = Boolean(isUnreadInMessenger);
+    return unread;
+  };
   const chatSummary = (row) => {
     const texts = rowTexts(row).filter((part) => part.visible).map((part) => part.text);
     const age = texts.lastIndexOf('·');
@@ -226,12 +264,15 @@
   // and Facebook stayed quiet.
   const notifyNewestChat = async () => {
     const links = chatLinks();
-    const unread = links.filter(isUnreadChat);
+    const unread = await unreadChats(links);
     // A message you send from your phone in an encrypted chat can leave that
     // chat unread here, and a computer back from sleep catches up on chats
     // all at once; Messenger notifies about neither.
+    // With no unread chat, the newest chat is tried only when Messenger's copy
+    // couldn't be read. When it could, the chats were read or muted while
+    // fMess waited, and the newest one may be a muted group.
     let link;
-    for (const row of unread.length ? unread : links.slice(0, 1)) {
+    for (const row of unread.length || unread.fromMessenger ? unread : links.slice(0, 1)) {
       if (!(await nothingNew(row).catch(() => false))) {
         link = row;
         break;
