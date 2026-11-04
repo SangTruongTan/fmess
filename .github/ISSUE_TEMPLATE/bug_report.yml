@@ -24,7 +24,7 @@ body:
     attributes:
       label: Operating system / Hệ điều hành
       options:
-        - macOS (Apple Silicon: M1, M2…)
+        - "macOS (Apple Silicon: M1, M2…)"
         - macOS (Intel)
         - Windows 11
         - Windows 10
