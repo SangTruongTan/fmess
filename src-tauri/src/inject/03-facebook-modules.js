@@ -53,6 +53,10 @@
           const details = readMessageDetails(db, message).catch(() => null);
           messageDetails.set(String(message?.messageId), details);
           if (messageDetails.size > 50) messageDetails.delete(messageDetails.keys().next().value);
+          try {
+            pageMessages.set(String(message?.messageId), { thread: String(int64(message.threadKey)), sent: Number(int64(message.timestampMs)) });
+            if (pageMessages.size > 50) pageMessages.delete(pageMessages.keys().next().value);
+          } catch {}
           return trigger.call(this, db, message, ...rest);
         };
         // A computer back from sleep gets the messages it missed one by one,

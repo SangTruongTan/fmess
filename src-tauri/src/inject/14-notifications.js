@@ -19,6 +19,11 @@
   // Sender and chat of a message notification, by message id (Messenger's
   // tag), read as MWDesktopNotifications does (see MODULE_PATCHES).
   const messageDetails = new Map();
+  // The chat and time of each message Messenger is about to notify about, by
+  // message id; and, per chat, the newest message it did notify about, which
+  // fMess's own notification (notifyNewestChat) then leaves alone.
+  const pageMessages = new Map();
+  const pageNotifiedUpTo = new Map();
   // A message sent over LATE_MS ago, or in a chat read past it (on another
   // device, say), needs no notification.
   async function isOldNews(db, message) {
@@ -129,6 +134,10 @@
         if (shownTags.has(this.tag)) return;
         shownTags.add(this.tag);
         if (shownTags.size > 500) shownTags.delete(shownTags.values().next().value);
+        const message = pageMessages.get(String(this.tag));
+        if (message && !raisingFallback && message.sent > (pageNotifiedUpTo.get(message.thread) ?? 0)) {
+          pageNotifiedUpTo.set(message.thread, message.sent);
+        }
       }
       // The native side takes an i32 id.
       this.fmessId = nextId++ % 0x7fffffff;
@@ -246,7 +255,8 @@
   };
 
   // Whether a chat row has nothing to notify about, as Messenger's copy of
-  // the chat list says: its newest message is your own, or came in late.
+  // the chat list says: its newest message is your own, came in late, or
+  // Messenger notified about it already.
   const nothingNew = async (row) => {
     const thread = row.getAttribute('href')?.match(/\/t\/(\d+)/)?.[1];
     const me = currentUserId();
@@ -256,8 +266,17 @@
     const db = await window.require('LSDatabaseSingleton').LSDatabaseSingleton;
     const chat = await ReQL.firstAsync(ReQL.fromTableAscending(db.tables.threads).getKeyRange(int64Key(thread)));
     if (!chat) return false;
-    return int64(chat.snippetSenderContactId) === BigInt(me) || serverNow() - Number(int64(chat.lastActivityTimestampMs)) > LATE_MS;
+    const lastActivity = Number(int64(chat.lastActivityTimestampMs));
+    return (
+      int64(chat.snippetSenderContactId) === BigInt(me) ||
+      serverNow() - lastActivity > LATE_MS ||
+      lastActivity <= (pageNotifiedUpTo.get(thread) ?? -1)
+    );
   };
+  // What fMess's own notification last said about each chat: when the count
+  // rose twice in a row, or rose again later for another reason (a computer
+  // back from sleep), the same message came up two or more times (#22).
+  const fallbackShown = new Map();
 
   // Facebook raises its own notifications (see MODULE_PATCHES). In case it
   // stops doing so, notify about the newest unread chat when the count rises
@@ -282,6 +301,10 @@
     if (!link || isMuted() || Date.now() - lastPageNotification < 4000) return;
     const chat = chatSummary(link);
     const href = link.getAttribute('href');
+    const said = `${chat.name}\n${chat.preview}`;
+    if (fallbackShown.get(href) === said) return;
+    fallbackShown.set(href, said);
+    if (fallbackShown.size > 100) fallbackShown.delete(fallbackShown.keys().next().value);
     raisingFallback = true;
     try {
       const notification = new FMessNotification(chat.name || 'Messenger', {
