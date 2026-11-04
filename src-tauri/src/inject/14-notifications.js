@@ -234,6 +234,8 @@
       const known = thread && isUnreadInMessenger ? await isUnreadInMessenger(thread).catch(() => undefined) : undefined;
       if (known ?? isUnreadChat(row)) unread.push(row);
     }
+    // Whether Messenger's copy answered: then no chat means none to count.
+    unread.fromMessenger = Boolean(isUnreadInMessenger);
     return unread;
   };
   const chatSummary = (row) => {
@@ -266,8 +268,11 @@
     // A message you send from your phone in an encrypted chat can leave that
     // chat unread here, and a computer back from sleep catches up on chats
     // all at once; Messenger notifies about neither.
+    // With no unread chat, the newest chat is tried only when Messenger's copy
+    // couldn't be read. When it could, the chats were read or muted while
+    // fMess waited, and the newest one may be a muted group.
     let link;
-    for (const row of unread.length ? unread : links.slice(0, 1)) {
+    for (const row of unread.length || unread.fromMessenger ? unread : links.slice(0, 1)) {
       if (!(await nothingNew(row).catch(() => false))) {
         link = row;
         break;
