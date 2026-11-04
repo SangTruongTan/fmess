@@ -166,14 +166,25 @@
     if (on) window.addEventListener('wheel', onViewerWheel, { capture: true, passive: false });
     else window.removeEventListener('wheel', onViewerWheel, { capture: true });
   }
-  // A pinch comes as Ctrl + wheel in small steps: Chromium sends 100 × ln of
-  // the pinch's scale, hence exp(-deltaY / 100). A mouse wheel with Ctrl comes
-  // a notch at a time, 100 or more each on Windows, so each notch zoomed
-  // about 2.7 times; a step zooms by at most a quarter now.
-  const ZOOM_STEP_MAX = 100 * Math.log(1.25);
-  const zoomStep = (event) => {
-    const deltaY = event.deltaY * (event.deltaMode === 1 ? 40 : event.deltaMode === 2 ? 800 : 1);
-    return Math.min(Math.max(deltaY, -ZOOM_STEP_MAX), ZOOM_STEP_MAX);
+  // How much a Ctrl + wheel zooms. Chromium (WebView2) hands a pinch to the
+  // page as Ctrl + wheel, deltaY being -100 × ln of the pinch's scale, so
+  // exp(-deltaY / 100) follows the fingers; no Ctrl key is down then. With
+  // the Ctrl key down it is a mouse wheel or a two-finger scroll, which
+  // zooms as d3-zoom's wheel does: 2^(-deltaY × 0.002), about 15% for a
+  // 100 px notch and as much for the same distance on a touchpad, near
+  // Windows' own zoom (Tauri's is 20% a step). It used to zoom by the pinch's
+  // rule, 2.7 times a notch, then 25% for every event, and a touchpad sends
+  // many. A big step with no Ctrl key seen is a wheel too (the window may
+  // not have had the keyboard).
+  let ctrlKeyDown = false;
+  for (const type of ['keydown', 'keyup', 'mousemove']) {
+    window.addEventListener(type, (event) => (ctrlKeyDown = event.ctrlKey), { capture: true, passive: true });
+  }
+  window.addEventListener('blur', () => (ctrlKeyDown = false));
+  const zoomFactor = (event) => {
+    const pixels = event.deltaY * (event.deltaMode === 1 ? 40 : event.deltaMode === 2 ? 800 : 1);
+    if (!ctrlKeyDown && Math.abs(pixels) < 50) return Math.exp(-pixels / 100);
+    return 2 ** (-Math.min(Math.max(pixels, -120), 120) * 0.002);
   };
   function onViewerWheel(event) {
     if (!viewerOpen) return;
@@ -182,7 +193,7 @@
       // (see allow_pinch in webview.rs).
       event.preventDefault();
       if (!startZoom()) return;
-      zoomAt(zoom.scale * Math.exp(-zoomStep(event) / 100), event.clientX, event.clientY);
+      zoomAt(zoom.scale * zoomFactor(event), event.clientX, event.clientY);
     } else if (zoom) {
       event.preventDefault();
       applyZoom(zoom.scale, zoom.x - event.deltaX, zoom.y - event.deltaY);
