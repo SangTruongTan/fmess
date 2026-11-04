@@ -51,6 +51,16 @@
     html[${CHATS}] [role="main"] [data-fmess-ui="details"] {
       box-shadow: -1px 0 0 var(--divider, var(--card-border-color));
     }
+    /* In a chat with a gradient theme, Facebook paints the box around the
+       messages with that gradient (in its inline style), under messages
+       that cover it. On macOS a fast scroll outran WebKit's painting, and
+       the parts not yet painted showed the gradient: the chat flashed purple
+       and blue (#27). The bubbles carry their own gradient, so the box needs
+       none; Messenger's page shows through instead. Themes paint this box
+       themselves, and win (:where adds no weight). */
+    :where(html[${CHATS}] [role="main"] [style*="background-image"][style*="--chat-outgoing-message-background-gradient"]) {
+      background-image: none !important;
+    }
     /* The photo/video viewer centres its top bar (close, download, forward)
        in a band --header-height tall, made for Facebook's 56px bar; without
        it the buttons sit off the top. The viewer gets a regular title bar
