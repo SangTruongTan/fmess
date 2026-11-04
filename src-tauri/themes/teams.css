@@ -1196,6 +1196,12 @@ html[data-fmess-chats] [role="main"] [data-scope="messages_table"] [role="toolba
 html[data-fmess-chats] [role="main"] [data-scope="messages_table"] > [role="presentation"] > [role="presentation"]:has(> [role="presentation"] > [role="toolbar"]) {
   position: static !important;
 }
+/* Right above the message, as in Teams: the row is what the card hangs
+   from. Without a position of its own, the card hung from the group, above
+   the sender's name, some 30px off the message. */
+html[data-fmess-chats] [role="main"] [data-scope="messages_table"] > [role="presentation"]:has(> [role="presentation"] > [role="presentation"] > [role="toolbar"]) {
+  position: relative !important;
+}
 /* After a quick reaction the card goes, as Messenger's own actions do,
    until the pointer leaves the message (fMess's data-fmess-reacted). Kept
    in place, hidden: Messenger's picker is anchored to its react button. */
@@ -1240,6 +1246,37 @@ html[data-fmess-chats] [role="main"] [role="toolbar"] > [role="presentation"] > 
    focus on one of its buttons. */
 html[data-fmess-chats] [role="main"] [data-scope="messages_table"]:not(:hover):not(:has([aria-expanded="true"], :focus-visible)) [role="toolbar"] > [role="presentation"] > [role="presentation"]:has([role="button"]) {
   display: none !important;
+}
+/* A bridge to the card: while a message shows its card, the strip the card
+   hangs in counts as that message, the whole chat wide (the card's own
+   ::before, under its buttons). Messenger gives the actions to whatever
+   message is under the pointer, and on the way up the pointer crossed the
+   one above beside the card (a sender's name, say, a row of its own), and
+   the card was gone before it was reached: on a tall message, whose card
+   is far from the pointer, nearly always. The card stacks above the
+   messages (z-index 2), so its bridge does too. */
+html[data-fmess-chats] [role="main"] [role="toolbar"] > [role="presentation"] > [role="presentation"]:has([role="button"])::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  top: -1px;
+  height: 42px;
+  left: -50px;
+  width: 100vw;
+}
+@container style(--tm-own: 1) {
+  html[data-fmess-chats] [role="main"] [role="toolbar"] > [role="presentation"] > [role="presentation"]:has([role="button"])::before {
+    left: auto;
+    right: -8px;
+  }
+}
+/* The card hangs over the message above, and each message sits in a box of
+   its own stacking (position: relative; z-index: 0) that the message above
+   paints over, so the pointer reached that message instead of the card,
+   which it could see, and Messenger moved the actions there. While a
+   message has its card, its box comes first, as Teams' card does. */
+html[data-fmess-chats] [role="main"] [role="log"] div:has(> div > [role="none"] > [role="article"] [role="toolbar"] [role="button"]) {
+  z-index: 1 !important;
 }
 @container style(--tm-own: 1) {
   html[data-fmess-chats] [role="main"] [role="toolbar"] > [role="presentation"] > [role="presentation"]:has([role="button"]) {
