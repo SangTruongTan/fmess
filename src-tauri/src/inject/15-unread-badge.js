@@ -6,6 +6,7 @@
   let watchedList = null;
   let listChanged = true;
   let counting = false;
+  let fallbackTimer = 0;
   const listWatcher = new MutationObserver(() => {
     listChanged = true;
   });
@@ -36,5 +37,9 @@
     if (count) document.documentElement.setAttribute('data-fmess-unread', count);
     else document.documentElement.removeAttribute('data-fmess-unread');
     invoke('set_unread_count', { count }).catch(() => {});
-    if (rose && !document.hasFocus()) setTimeout(notifyNewestChat, 1500);
+    // Rises close together make one notification.
+    if (rose && !document.hasFocus()) {
+      clearTimeout(fallbackTimer);
+      fallbackTimer = setTimeout(notifyNewestChat, 1500);
+    }
   }, 2000);
