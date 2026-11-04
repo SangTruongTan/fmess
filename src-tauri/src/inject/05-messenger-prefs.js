@@ -122,10 +122,48 @@
   // Messenger still plays its message sound during Do Not Disturb; fMess
   // keeps it quiet. Its sounds are <audio> files (SoundPlayer); call audio is
   // a stream, and ringing loops, so calls still ring.
+  //
+  // And WebKit offers any media element that has played as the system's Now
+  // Playing (Control Center, the media keys): "(3) Messenger | Facebook" with
+  // a play button, which stayed there after every message sound (#22). The
+  // sounds are short files, so fMess plays them through Web Audio instead,
+  // which isn't offered; if that fails, the element plays as before.
   const nativePlay = HTMLMediaElement.prototype.play;
+  let soundContext = null;
+  let soundsPlaying = 0;
+  const soundBuffers = new Map();
+  const playSound = async (element) => {
+    const src = element.currentSrc || element.src;
+    soundContext ??= new AudioContext();
+    let buffer = soundBuffers.get(src);
+    if (!buffer) {
+      buffer = fetch(src)
+        .then((response) => (response.ok ? response.arrayBuffer() : Promise.reject(new Error(`HTTP ${response.status}`))))
+        .then((data) => soundContext.decodeAudioData(data));
+      soundBuffers.set(src, buffer);
+      buffer.catch(() => soundBuffers.delete(src));
+    }
+    // A context the page may not start yet would wait for a click forever.
+    const awake = Promise.race([soundContext.resume(), new Promise((resolve) => setTimeout(resolve, 1000))]);
+    const [data] = await Promise.all([buffer, awake]);
+    if (soundContext.state !== 'running') throw new Error(`audio ${soundContext.state}`);
+    const source = soundContext.createBufferSource();
+    const gain = soundContext.createGain();
+    source.buffer = data;
+    gain.gain.value = element.muted ? 0 : element.volume;
+    source.connect(gain).connect(soundContext.destination);
+    soundsPlaying += 1;
+    // Between sounds the context sleeps, so it doesn't keep the audio
+    // device busy.
+    source.onended = () => (soundsPlaying -= 1) || soundContext.suspend().catch(() => {});
+    source.start();
+  };
   HTMLMediaElement.prototype.play = function (...args) {
-    if (this instanceof HTMLAudioElement && this.src && !this.loop && isMuted()) return Promise.resolve();
-    return nativePlay.apply(this, args);
+    // Calls ring with a looping sound, and their audio is a stream.
+    const isSound = this instanceof HTMLAudioElement && this.src && !this.loop && !this.srcObject;
+    if (!isSound) return nativePlay.apply(this, args);
+    if (isMuted()) return Promise.resolve();
+    return playSound(this).catch(() => nativePlay.apply(this, args));
   };
   // Do Not Disturb for ms milliseconds; -1 until turned off, 0 turns it off.
   const muteFor = async (ms) => {
