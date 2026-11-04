@@ -114,6 +114,8 @@ pub fn run<R: Runtime>(app: AppHandle<R>) {
         ));
         for _ in 0..wait * 2 {
             thread::sleep(Duration::from_millis(500));
+            #[cfg(target_os = "macos")]
+            serve_snapshot_request(&window);
             let (tx, rx) = std::sync::mpsc::channel();
             let _ = window.eval_with_callback("window.__fmessProbe ?? null", move |result| {
                 let _ = tx.send(result);
@@ -134,13 +136,35 @@ pub fn run<R: Runtime>(app: AppHandle<R>) {
     });
 }
 
-/// Saves a picture of the page as a PNG, at the screen's scale.
+/// A probe can take pictures while it runs (tests/app/chat-check.js does,
+/// one per chat, look and mode): it sets window.__fmessSnapshotRequest to a
+/// file path, and once the picture is saved, window.__fmessSnapshotDone is
+/// that path.
+#[cfg(target_os = "macos")]
+fn serve_snapshot_request<R: Runtime>(window: &tauri::WebviewWindow<R>) {
+    let (tx, rx) = std::sync::mpsc::channel();
+    let _ = window.eval_with_callback("window.__fmessSnapshotRequest ?? null", move |result| {
+        let _ = tx.send(result);
+    });
+    let Ok(result) = rx.recv_timeout(Duration::from_secs(5)) else {
+        return;
+    };
+    let Ok(Some(path)) = serde_json::from_str::<Option<String>>(&result) else {
+        return;
+    };
+    let _ = window.eval("window.__fmessSnapshotRequest = null;");
+    snapshot(window, path);
+}
+
+/// Saves a picture of the page as a PNG, at the screen's scale, then sets
+/// window.__fmessSnapshotDone to its path.
 #[cfg(target_os = "macos")]
 fn snapshot<R: Runtime>(window: &tauri::WebviewWindow<R>, path: String) {
     use block2::RcBlock;
     use objc2::{class, msg_send, rc::Retained, runtime::AnyObject};
     use objc2_foundation::NSString;
 
+    let page = window.clone();
     let _ = window.with_webview(move |webview| {
         let view = webview.inner().cast::<AnyObject>();
         let done = RcBlock::new(move |image: *mut AnyObject, _error: *mut AnyObject| {
@@ -156,6 +180,7 @@ fn snapshot<R: Runtime>(window: &tauri::WebviewWindow<R>, path: String) {
                 msg_send![png, writeToFile: &*NSString::from_str(&path), atomically: true]
             };
             eprintln!("[snapshot] {} {path}", if saved { "saved" } else { "not saved" });
+            let _ = page.eval(format!("window.__fmessSnapshotDone = {};", serde_json::json!(path)));
         });
         // SAFETY: the platform web view is a WKWebView, on the main thread.
         unsafe {
