@@ -64,15 +64,20 @@
   // Dragging the zoomed photo; a drag isn't a click on whatever is under it.
   let drag = null;
   let dragged = false;
-  // The photo: the largest image in the viewer (the blurred backdrop behind it
-  // is a small thumbnail, and the thumbnails at the bottom are small).
+  // The photo: the largest image in the viewer (the thumbnails at the bottom
+  // are small). Behind it is a blurred backdrop that covers the window
+  // (object-fit: cover). In an encrypted chat the backdrop is the same
+  // picture, as many pixels, and comes first, so it was the one zoomed while
+  // the photo stayed put (in one-to-one chats, which are encrypted). The
+  // photo shows whole, so one that isn't cropped to cover comes first.
   const viewerPhoto = () => {
     const pixels = (img) => img.naturalWidth * img.naturalHeight;
+    const covers = (img) => (getComputedStyle(img).objectFit === 'cover' ? 1 : 0);
     const layer = viewerLayer();
     return (
       [...(layer ?? document).querySelectorAll(layer ? 'img' : '[role="dialog"] img')]
         .filter((img) => img.getBoundingClientRect().width > 100)
-        .sort((a, b) => pixels(b) - pixels(a))[0] ?? null
+        .sort((a, b) => covers(a) - covers(b) || pixels(b) - pixels(a))[0] ?? null
     );
   };
   const isOn = (el, x, y) => {
