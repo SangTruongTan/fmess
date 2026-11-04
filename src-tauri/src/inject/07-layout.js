@@ -55,10 +55,23 @@
        messages with that gradient (in its inline style), under messages
        that cover it. On macOS a fast scroll outran WebKit's painting, and
        the parts not yet painted showed the gradient: the chat flashed purple
-       and blue (#27). The bubbles carry their own gradient, so the box needs
-       none; Messenger's page shows through instead. Themes paint this box
-       themselves, and win (:where adds no weight). */
-    :where(html[${CHATS}] [role="main"] [style*="background-image"][style*="--chat-outgoing-message-background-gradient"]) {
+       and blue (#27).
+       Your bubbles show that gradient one of two ways: in some chats each
+       paints it itself (a fixed background), in others each is a see-through
+       window onto the box (0.1.31 dropped the box's gradient and left those
+       bubbles bare). So your bubbles (Messenger's class for their colour,
+       x11jlvup) paint it themselves, fixed to the window as the box's is,
+       and the box goes without only where your bubbles paint it (those, or
+       Messenger's own fixed ones, x1nr1p0w): should Facebook rename them,
+       the :has() keeps the box's gradient, and the flash comes back rather
+       than bare bubbles. A wallpaper (a picture) stays. Themes set the gradient to
+       initial on the box, so their bubbles keep their colour, and paint the
+       box themselves (:where adds no weight). */
+    html[${CHATS}] [role="main"] [style*="--chat-outgoing-message-background-gradient"] .x11jlvup {
+      background-image: var(--chat-outgoing-message-background-gradient) !important;
+      background-attachment: fixed !important;
+    }
+    :where(html[${CHATS}] [role="main"] [style*="linear-gradient"][style*="--chat-outgoing-message-background-gradient"]:has(.x11jlvup, .x1nr1p0w)) {
       background-image: none !important;
     }
     /* The photo/video viewer centres its top bar (close, download, forward)
