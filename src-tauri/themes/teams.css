@@ -951,6 +951,12 @@ html[data-fmess-chats] [role="main"] [data-message-id] [dir="auto"] {
   font-size: 14px !important;
   line-height: 20px !important;
 }
+/* A quote in a message ("> …"): Messenger draws its bar and text white, for
+   its own dark bubbles; on Teams' light lavender they hardly showed. */
+html[data-fmess-chats] [role="main"] [data-message-id] blockquote {
+  --secondary-text-on-media: var(--tm-fg2) !important;
+  --chat-text-blockquote-color-text-primary-media: var(--tm-quote-bar) !important;
+}
 /* Someone typing: their picture and dots in line with the messages'
    (Messenger sets them 8px further left). */
 html[data-fmess-chats] [role="main"] [role="log"] [aria-hidden="true"]:not([data-message-id] *):has(> div[role="presentation"] + div [role="presentation"]) > div[role="presentation"]:first-child {

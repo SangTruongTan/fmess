@@ -392,6 +392,12 @@ html[data-fmess-dark] {
 [role="main"] [data-message-id] [dir="auto"] {
   font-size: 14.2px !important;
 }
+/* A quote in a message ("> …"): Messenger draws its bar and text white, for
+   its own dark bubbles; on WhatsApp's light green they hardly showed. */
+[role="main"] [data-message-id] blockquote {
+  --secondary-text-on-media: var(--wa-text-2) !important;
+  --chat-text-blockquote-color-text-primary-media: var(--wa-text-2) !important;
+}
 
 /* Composer: a white pill floating over the chat, with + and the smiley
    before the box and the microphone after it. */
