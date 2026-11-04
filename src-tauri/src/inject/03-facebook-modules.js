@@ -23,6 +23,8 @@
     if (changed !== null) macCalls = changed !== '0';
   } catch {}
   const FORCED_GATES = macCalls ? { 16078: true } : {};
+  // While above zero, a media element's play() is Messenger's own sound.
+  let soundPlayerCalls = 0;
   const MODULE_PATCHES = {
     gkx(exports) {
       const gkx = exports.default;
@@ -36,6 +38,23 @@
     // Facebook pops its own notifications (group posts, likes) over the page
     // unless the route asks it not to; in fMess no route wants them. The
     // notifications under the bell in Facebook's top bar stay.
+    // Messenger's own sounds (a message, a sent one) are played by
+    // SoundPlayer.play, from <audio> elements it keeps in the page. fMess
+    // plays those through Web Audio (see playSound), and only those: voice
+    // messages and other audio stay media elements.
+    SoundPlayer(exports) {
+      const play = exports.play;
+      if (typeof play !== 'function') return false;
+      exports.play = function (...args) {
+        soundPlayerCalls += 1;
+        try {
+          return play.apply(this, args);
+        } finally {
+          soundPlayerCalls -= 1;
+        }
+      };
+      return true;
+    },
     useHideNotificationsToasts(exports) {
       if (typeof exports.default !== 'function') return false;
       exports.default = () => true;
