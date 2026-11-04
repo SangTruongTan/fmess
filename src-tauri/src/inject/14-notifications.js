@@ -254,18 +254,22 @@
     return { name: texts[0] ?? '', preview };
   };
 
-  // Whether a chat row has nothing to notify about, as Messenger's copy of
-  // the chat list says: its newest message is your own, came in late, or
-  // Messenger notified about it already.
-  const nothingNew = async (row) => {
+  // Messenger's copy of the chat a row links to: { thread, chat }, or null.
+  const chatRecord = async (row) => {
     const thread = row.getAttribute('href')?.match(/\/t\/(\d+)/)?.[1];
-    const me = currentUserId();
-    if (!thread || !me) return false;
+    if (!thread) return null;
     await loadModules(['ReQL', 'LSDatabaseSingleton']);
     const ReQL = window.require('ReQL');
     const db = await window.require('LSDatabaseSingleton').LSDatabaseSingleton;
     const chat = await ReQL.firstAsync(ReQL.fromTableAscending(db.tables.threads).getKeyRange(int64Key(thread)));
-    if (!chat) return false;
+    return chat ? { thread, chat } : null;
+  };
+  // Whether a chat has nothing to notify about, as Messenger's copy of it
+  // says: its newest message is your own, came in late, or Messenger
+  // notified about it already.
+  const nothingNew = ({ thread, chat }) => {
+    const me = currentUserId();
+    if (!me) return false;
     const lastActivity = Number(int64(chat.lastActivityTimestampMs));
     return (
       int64(chat.snippetSenderContactId) === BigInt(me) ||
@@ -273,10 +277,24 @@
       lastActivity <= (pageNotifiedUpTo.get(thread) ?? -1)
     );
   };
-  // What fMess's own notification last said about each chat: when the count
-  // rose twice in a row, or rose again later for another reason (a computer
-  // back from sleep), the same message came up two or more times (#22).
+  // What fMess's own notification last said about each chat, and the chat's
+  // last activity then: when the count rose twice in a row, or rose again
+  // later for another reason (a computer back from sleep), the same message
+  // came up two or more times (#22). Messenger's copy keeps no id for a
+  // chat's newest message, so a notification counts as said again when the
+  // chat's last activity is the same, or when the name and preview are the
+  // same and the chat hasn't been read since (another "ok" after you read
+  // the first one is new).
   const fallbackShown = new Map();
+  const saidAlready = (href, said, record) => {
+    const before = fallbackShown.get(href);
+    if (!before) return false;
+    const activity = record ? Number(int64(record.chat.lastActivityTimestampMs)) : null;
+    if (activity !== null && activity === before.activity) return true;
+    if (said !== before.said) return false;
+    const readUpTo = record ? Number(int64(record.chat.lastReadWatermarkTimestampMs)) : null;
+    return readUpTo === null || before.activity === null || readUpTo < before.activity;
+  };
 
   // Facebook raises its own notifications (see MODULE_PATCHES). In case it
   // stops doing so, notify about the newest unread chat when the count rises
@@ -291,9 +309,12 @@
     // couldn't be read. When it could, the chats were read or muted while
     // fMess waited, and the newest one may be a muted group.
     let link;
+    let record = null;
     for (const row of unread.length || unread.fromMessenger ? unread : links.slice(0, 1)) {
-      if (!(await nothingNew(row).catch(() => false))) {
+      const found = await chatRecord(row).catch(() => null);
+      if (!found || !nothingNew(found)) {
         link = row;
+        record = found;
         break;
       }
     }
@@ -302,8 +323,8 @@
     const chat = chatSummary(link);
     const href = link.getAttribute('href');
     const said = `${chat.name}\n${chat.preview}`;
-    if (fallbackShown.get(href) === said) return;
-    fallbackShown.set(href, said);
+    if (saidAlready(href, said, record)) return;
+    fallbackShown.set(href, { said, activity: record ? Number(int64(record.chat.lastActivityTimestampMs)) : null });
     if (fallbackShown.size > 100) fallbackShown.delete(fallbackShown.keys().next().value);
     raisingFallback = true;
     try {

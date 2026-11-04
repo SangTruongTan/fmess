@@ -12,19 +12,19 @@ const src = readdirSync(parts)
   .map((name) => readFileSync(new URL(name, parts), 'utf8'))
   .join('')
   .replace(/\r\n/g, '\n');
-const fallback = src.match(/  const nothingNew = async[\s\S]*?\n  const notifyNewestChat = async[\s\S]*?\n  };\n/)[0];
+const fallback = src.match(/  const chatRecord = async[\s\S]*?\n  const notifyNewestChat = async[\s\S]*?\n  };\n/)[0];
 
 const ME = '1';
 const NOW = 1_000_000_000;
 
 // A chat list: each chat has a row (name, preview, unread) and Messenger's
-// copy of it (who sent the newest message, and when).
+// copy of it (who sent the newest message, when, and read up to when).
 function world(chats) {
-  const w = { notices: [], now: NOW, chats, pageNotifiedUpTo: new Map() };
+  const w = { notices: [], now: NOW, chats, pageNotifiedUpTo: new Map(), fromMessenger: true };
   const row = (chat) => ({ chat, getAttribute: (name) => (name === 'href' ? `/messages/t/${chat.id}/` : null), querySelector: () => null });
   const env = {
     chatLinks: () => w.chats.map(row),
-    unreadChats: async (rows) => rows.filter((r) => r.chat.unread),
+    unreadChats: async (rows) => Object.assign(rows.filter((r) => r.chat.unread), { fromMessenger: w.fromMessenger }),
     chatSummary: (r) => ({ name: r.chat.name, preview: r.chat.preview }),
     currentUserId: () => ME,
     loadModules: async () => {},
@@ -37,7 +37,7 @@ function world(chats) {
               tables: {
                 get threads() {
                   return Object.fromEntries(
-                    w.chats.map((c) => [c.id, { snippetSenderContactId: c.from, lastActivityTimestampMs: c.at }]),
+                    w.chats.map((c) => [c.id, { snippetSenderContactId: c.from, lastActivityTimestampMs: c.at, lastReadWatermarkTimestampMs: c.readTo ?? 0 }]),
                   );
                 },
               },
@@ -108,6 +108,27 @@ const check = (name, ok, detail) => results.push(`${ok ? 'PASS' : 'FAIL'} ${name
   ]);
   await w.notify();
   check('own and late messages stay quiet', w.notices.length === 0, w.notices);
+}
+
+{
+  // Two messages that read the same: "ok", you read it, then a new "ok".
+  const w = world([{ id: '10', name: 'An', preview: 'ok', unread: true, from: '2', at: NOW - 1000 }]);
+  await w.notify();
+  w.chats[0].readTo = NOW - 1000;
+  w.now += 60 * 1000;
+  w.chats[0].at = w.now - 1000;
+  await w.notify();
+  check('the same words after reading are a new message', w.notices.length === 2, w.notices);
+}
+{
+  // The chat that raised the count was read or muted while fMess waited;
+  // the newest chat in the list is a muted group.
+  const w = world([{ id: '20', name: 'Muted group', preview: 'spam', unread: false, from: '2', at: NOW - 500 }]);
+  await w.notify();
+  check('no unread chat left: nothing, not the newest chat', w.notices.length === 0, w.notices);
+  w.fromMessenger = false;
+  await w.notify();
+  check("without Messenger's copy, the newest chat is tried", w.notices.length === 1, w.notices);
 }
 
 console.log(results.join('\n'));
