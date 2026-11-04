@@ -304,6 +304,11 @@ html[data-fmess-unread]::after {
 [role="navigation"] [role="row"] a[role="link"] {
   border-radius: 6px !important;
 }
+/* A little room between the filters' line and the first chat, as in Zalo:
+   a hovered or open first chat touched the line. */
+[data-fmess-list] [role="tabpanel"] {
+  padding-top: 6px !important;
+}
 [role="navigation"] [role="row"] a[role="link"]:hover {
   background: var(--z-row-hover) !important;
 }
@@ -314,6 +319,13 @@ html[data-fmess-unread]::after {
 /* Bubbles: every corner rounded, a little apart. */
 [role="main"] [data-message-id] [role="presentation"] {
   border-radius: 8px !important;
+}
+/* A quote in a message ("> …"): Messenger draws its bar and text white, for
+   its own dark bubbles; on Zalo's light blue they hardly showed. The bar is
+   Zalo's blue, as on a reply. */
+[role="main"] [data-message-id] blockquote {
+  --secondary-text-on-media: var(--z-quote-text) !important;
+  --chat-text-blockquote-color-text-primary-media: var(--z-blue) !important;
 }
 [role="main"] [role="log"] [role="article"] {
   padding-block: 3px !important;
