@@ -166,14 +166,23 @@
     if (on) window.addEventListener('wheel', onViewerWheel, { capture: true, passive: false });
     else window.removeEventListener('wheel', onViewerWheel, { capture: true });
   }
+  // A pinch comes as Ctrl + wheel in small steps: Chromium sends 100 × ln of
+  // the pinch's scale, hence exp(-deltaY / 100). A mouse wheel with Ctrl comes
+  // a notch at a time, 100 or more each on Windows, so each notch zoomed
+  // about 2.7 times; a step zooms by at most a quarter now.
+  const ZOOM_STEP_MAX = 100 * Math.log(1.25);
+  const zoomStep = (event) => {
+    const deltaY = event.deltaY * (event.deltaMode === 1 ? 40 : event.deltaMode === 2 ? 800 : 1);
+    return Math.min(Math.max(deltaY, -ZOOM_STEP_MAX), ZOOM_STEP_MAX);
+  };
   function onViewerWheel(event) {
     if (!viewerOpen) return;
     if (event.ctrlKey) {
-      // Not the page's zoom: on Windows WebView2's is on while the viewer is
-      // open (set_viewer_open), so a Ctrl + wheel off the photo would zoom it.
+      // Not the page's zoom: on Windows a pinch would zoom the page itself
+      // (see allow_pinch in webview.rs).
       event.preventDefault();
       if (!startZoom()) return;
-      zoomAt(zoom.scale * Math.exp(-event.deltaY / 100), event.clientX, event.clientY);
+      zoomAt(zoom.scale * Math.exp(-zoomStep(event) / 100), event.clientX, event.clientY);
     } else if (zoom) {
       event.preventDefault();
       applyZoom(zoom.scale, zoom.x - event.deltaX, zoom.y - event.deltaY);
