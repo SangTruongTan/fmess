@@ -77,6 +77,8 @@ pub fn create_main_window<R: Runtime>(app: &AppHandle<R>, settings: &Settings) -
     let window = configure(builder, app, MAIN_WINDOW).build()?;
     #[cfg(target_os = "macos")]
     draw_at_screen_rate(&window);
+    #[cfg(windows)]
+    allow_pinch(&window);
     if settings.zoom != 1.0 {
         let _ = window.set_zoom(settings.zoom);
     }
@@ -198,32 +200,33 @@ pub fn set_viewer_open<R: Runtime>(app: AppHandle<R>, open: bool) {
         set_title_visible(&window, open);
         focus_page(&window);
     }
-    #[cfg(windows)]
-    allow_zoom_gestures(&app, open);
-    #[cfg(not(any(target_os = "macos", windows)))]
+    #[cfg(not(target_os = "macos"))]
     let _ = (app, open);
 }
 
-/// Tauri turns WebView2's own zoom off (Ctrl + wheel, Ctrl + -/=, a touchpad
-/// pinch), and with it off the photo viewer's zoom (12-viewer.js) got no
-/// Ctrl + wheel or pinch on Windows: neither zoomed the photo. So it is on
-/// while the viewer is open. The viewer takes every Ctrl + wheel there, and
-/// fMess's shortcuts take Ctrl + -/=, so the page itself doesn't zoom.
+/// A touchpad pinch reaches the page, as Ctrl + wheel for the photo viewer's
+/// zoom (12-viewer.js), only while WebView2's pinch zoom is on. Tauri turns it
+/// off along with Ctrl + wheel and Ctrl + -/= (zoom hotkeys), and WebView2
+/// takes a change to it only at the next top-level navigation: turning it on
+/// as the viewer opened did nothing, Messenger being one page. So it is on from
+/// the start, and the window loads its first page again for that, right after
+/// it opens. Ctrl + wheel and Ctrl + -/= stay off (IsZoomControlEnabled); in
+/// the viewer, its zoom takes every Ctrl + wheel, a pinch's too.
 #[cfg(windows)]
-fn allow_zoom_gestures<R: Runtime>(app: &AppHandle<R>, on: bool) {
+fn allow_pinch<R: Runtime>(window: &tauri::WebviewWindow<R>) {
     use webview2_com::Microsoft::Web::WebView2::Win32::ICoreWebView2Settings5;
-    use windows_core::Interface;
+    use windows_core::{Interface, HSTRING};
 
-    let Some(window) = app.get_webview_window(MAIN_WINDOW) else {
-        return;
-    };
+    let url = messages_url().to_string();
     let _ = window.with_webview(move |webview| unsafe {
-        let Ok(settings) = webview.controller().CoreWebView2().and_then(|core| core.Settings()) else {
+        let Ok(core) = webview.controller().CoreWebView2() else {
             return;
         };
-        let _ = settings.SetIsZoomControlEnabled(on);
-        if let Ok(settings5) = settings.cast::<ICoreWebView2Settings5>() {
-            let _ = settings5.SetIsPinchZoomEnabled(on);
+        let Ok(settings5) = core.Settings().and_then(|settings| settings.cast::<ICoreWebView2Settings5>()) else {
+            return;
+        };
+        if settings5.SetIsPinchZoomEnabled(true).is_ok() {
+            let _ = core.Navigate(&HSTRING::from(url));
         }
     });
 }
