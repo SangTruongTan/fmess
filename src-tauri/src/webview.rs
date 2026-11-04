@@ -196,6 +196,7 @@ pub fn set_viewer_open<R: Runtime>(app: AppHandle<R>, open: bool) {
         };
         let _ = window.set_title_bar_style(style);
         set_title_visible(&window, open);
+        focus_page(&window);
     }
     #[cfg(windows)]
     allow_zoom_gestures(&app, open);
@@ -245,6 +246,19 @@ fn set_title_visible<R: Runtime>(window: &tauri::WebviewWindow<R>, visible: bool
         } else {
             NSWindowTitleVisibility::Hidden
         });
+    });
+}
+
+/// Changing the title bar style leaves the window without a first responder,
+/// so Escape and the arrow keys didn't reach the viewer until it was clicked.
+#[cfg(target_os = "macos")]
+fn focus_page<R: Runtime>(window: &tauri::WebviewWindow<R>) {
+    use objc2_app_kit::{NSView, NSWindow};
+
+    let _ = window.with_webview(|webview| {
+        // SAFETY: Tauri gives the live WKWebView and NSWindow, on the main thread.
+        let (view, ns_window) = unsafe { (&*(webview.inner() as *const NSView), &*(webview.ns_window() as *const NSWindow)) };
+        ns_window.makeFirstResponder(Some(view));
     });
 }
 

@@ -123,9 +123,35 @@
   // keeps it quiet. Its sounds are <audio> files (SoundPlayer); call audio is
   // a stream, and ringing loops, so calls still ring.
   const nativePlay = HTMLMediaElement.prototype.play;
+  // An <audio> element playing in WKWebView shows up in macOS Now Playing, so
+  // short sounds go through Web Audio instead, which doesn't. Anything that
+  // fails (fetch, decode, suspended context) falls back to the element.
+  let soundContext;
+  const soundBuffers = new Map();
+  const playSound = async (src, volume) => {
+    soundContext ||= new AudioContext();
+    if (soundContext.state !== 'running') await soundContext.resume();
+    if (soundContext.state !== 'running') throw new Error('audio context suspended');
+    if (!soundBuffers.has(src)) {
+      soundBuffers.set(
+        src,
+        fetch(src)
+          .then((response) => response.arrayBuffer())
+          .then((data) => soundContext.decodeAudioData(data))
+          .catch((error) => (soundBuffers.delete(src), Promise.reject(error))),
+      );
+    }
+    const source = soundContext.createBufferSource();
+    source.buffer = await soundBuffers.get(src);
+    const gain = soundContext.createGain();
+    gain.gain.value = volume;
+    source.connect(gain).connect(soundContext.destination);
+    source.start();
+  };
   HTMLMediaElement.prototype.play = function (...args) {
-    if (this instanceof HTMLAudioElement && this.src && !this.loop && isMuted()) return Promise.resolve();
-    return nativePlay.apply(this, args);
+    if (!(this instanceof HTMLAudioElement && this.src && !this.loop)) return nativePlay.apply(this, args);
+    if (isMuted()) return Promise.resolve();
+    return playSound(this.currentSrc || this.src, this.muted ? 0 : this.volume).catch(() => nativePlay.apply(this, args));
   };
   // Do Not Disturb for ms milliseconds; -1 until turned off, 0 turns it off.
   const muteFor = async (ms) => {
