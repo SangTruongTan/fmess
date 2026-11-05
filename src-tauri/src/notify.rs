@@ -30,7 +30,10 @@ pub struct Group {
 
 /// Called by inject.js whenever the page creates a web `Notification`. `icon`
 /// is its picture and `image` a photo in the message (base64); `message`
-/// says who wrote in which chat, when the page knows.
+/// says who wrote in which chat, when the page knows. `sound`: it rings with
+/// the system's sound (Windows only; see inject.js shouldRing).
+// A command's arguments are the fields the page sends.
+#[allow(clippy::too_many_arguments)]
 #[tauri::command]
 pub async fn notify<R: Runtime>(
     app: AppHandle<R>,
@@ -40,6 +43,7 @@ pub async fn notify<R: Runtime>(
     icon: Option<String>,
     image: Option<String>,
     message: Option<Message>,
+    sound: Option<bool>,
 ) -> Result<(), String> {
     #[cfg(debug_assertions)]
     eprintln!(
@@ -83,13 +87,23 @@ pub async fn notify<R: Runtime>(
     } else {
         (settings.app_name().to_owned(), new_message.to_owned())
     };
-    app.notification()
-        .builder()
-        .id(id)
-        .title(title)
-        .body(body)
-        .show()
-        .map_err(|err| err.to_string())
+    let builder = app.notification().builder().id(id).title(title).body(body);
+    with_sound(builder, sound.unwrap_or(false)).show().map_err(|err| err.to_string())
+}
+
+/// A Windows notification with no sound named plays none (tauri-plugin-
+/// notification's toast says `<audio silent="true"/>`); "Default" is Windows'
+/// own notification sound, as a browser's notifications use. Elsewhere
+/// notifications stay silent: Messenger plays its own sound in the page.
+fn with_sound<R: Runtime>(
+    builder: tauri_plugin_notification::NotificationBuilder<R>,
+    sound: bool,
+) -> tauri_plugin_notification::NotificationBuilder<R> {
+    if cfg!(windows) && sound {
+        builder.sound("Default")
+    } else {
+        builder
+    }
 }
 
 /// The Settings window's Send Test Notification: shows one through the same
@@ -103,12 +117,9 @@ pub fn test_notification<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
         communication::show(communication::Notification::plain(0, title, body));
         return Ok(());
     }
-    app.notification()
-        .builder()
-        .title(title)
-        .body(body)
-        .show()
-        .map_err(|err| err.to_string())
+    // It rings as a message's would.
+    let builder = app.notification().builder().title(title).body(body);
+    with_sound(builder, settings::messenger_sounds_on(&app)).show().map_err(|err| err.to_string())
 }
 
 /// Windows shows notifications only from apps it knows by their app ID
