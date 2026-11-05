@@ -747,4 +747,17 @@ html:not([data-fmess-dark]) .__fb-dark-mode {
   --secondary-text: #b0b3b8 !important;
   --primary-icon: #e4e6eb !important;
   --secondary-icon: #b0b3b8 !important;
+  /* A toast's close button: Zalo's light grey under a light cross hid it. */
+  --secondary-button-background: #3a3b3c !important;
+}
+
+/* And its light islands on a dark page (toasts again: Facebook draws them the
+   other way round from the page) keep their dark text: the page's light
+   text made them white on white. */
+html[data-fmess-dark] .__fb-light-mode {
+  --primary-text: #050505 !important;
+  --secondary-text: #65676b !important;
+  --primary-icon: #050505 !important;
+  --secondary-icon: #65676b !important;
+  --secondary-button-background: #e4e6eb !important;
 }

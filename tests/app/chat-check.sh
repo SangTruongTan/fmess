@@ -97,6 +97,14 @@ for chat in result['chats']:
                 run['problems'].append(f"quote text hard to read: contrast {contrast(col(q['text']), under):.2f} on {under}")
             if q['bar'] and contrast(col(q['bar']), under) < 1.25:
                 run['problems'].append(f"quote bar hard to see on {under}")
+        for t in run.get('toasts', []):
+            under = px(t['inside'])
+            if contrast(col(t['text']), under) < 3:
+                run['problems'].append(f"toast text hard to read: contrast {contrast(col(t['text']), under):.2f}, {col(t['text'])} on {under}")
+            for b in t.get('buttons', []):
+                cross, face = px(b['cross']), px(b['face'])
+                if contrast(cross, face) < 2:
+                    run['problems'].append(f"toast's close button hard to see: its cross {cross} on {face}")
         for i in run['icons']:
             # A bubble behind an emoji is far from the chat's colour; a
             # wallpaper's pattern (WhatsApp's doodles) is near it.
@@ -104,12 +112,19 @@ for chat in result['chats']:
             if all(sum(abs(p - q) for p, q in zip(beside, px(f))) >= 60 for f in i['further']):
                 run['problems'].append(f"emoji message {i['alt']} sits on something: {beside} beside it, {[px(f) for f in i['further']]} further out")
         failures += [f"{where}: {p}" for p in run['problems']]
+# A toast that never showed is a check not made, not a pass.
+for chat in result['chats']:
+    for m in chat.get('missing', []):
+        failures.append(f"toast · {m['look']} · {m['mode']}: no toast showed ({m['why']})")
 result['failures'] = failures
 json.dump(result, open(f'{out}/result.json', 'w'), indent=1, ensure_ascii=False)
 for chat in result['chats']:
     runs = chat['runs']
     bad = sum(len(r.get('problems', [])) for r in runs)
     grad = 'yes' if any(r['containerGradient'] for r in runs) else 'no'
+    if chat.get('toast'):
+        print(f"{'FAIL' if bad else 'ok  '} {'toast':<16} {sum(len(r.get('toasts', [])) for r in runs)} toasts in {len(runs)} looks/modes")
+        continue
     print(f"{'FAIL' if bad else 'ok  '} {chat['label']:<16} {sum(len(r['bubbles']) for r in runs)} bubbles, {sum(len(r['quotes']) for r in runs)} quotes, {sum(len(r['icons']) for r in runs)} emoji messages in {len(runs)} looks/modes; box gradient: {grad}")
 for note in result['notes']:
     print('note:', note)

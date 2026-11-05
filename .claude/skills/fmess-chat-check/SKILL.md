@@ -21,6 +21,7 @@ theme found:
 | fMess look | Messenger, Zalo, WhatsApp, Teams (CSS put in the page, nothing saved) |
 | Mode | light, dark (Messenger's own setting, put back at the end) |
 | Messages | text bubbles (yours, theirs), quotes, emoji-only ("icons") |
+| Toasts | one of Facebook's own (`cometPushToast`) per look and mode, as a chat named `toast` |
 
 It scrolls back up to 8 screens for a screen with a quote or an emoji message.
 Notes at the end say what wasn't found (e.g. no emoji message): look for one
@@ -34,6 +35,11 @@ by hand then.
 - an emoji-only message has no bubble behind it
 - `box gradient` per chat: whether the chat box still paints the theme's
   gradient (the fast-scroll flash, #27, comes from it)
+- a toast's text reads (≥ 3) and its close button's cross shows on its face
+  (≥ 2). Facebook draws toasts the other way round from the page, so a theme's
+  page colours leaking into them gave white on white (0.1.33, dark mode, all
+  three themes). A toast that never showed fails (`no toast showed`, with
+  whether the page was hidden: keep the window in view while it runs)
 
 Skipped on purpose: text in links (shared posts) and buttons (the message a
 reply quotes), see-through bubbles Messenger dims, bubbles drawn as a border
