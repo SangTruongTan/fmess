@@ -53,3 +53,6 @@ known-good one (it must pass).
 The fast-scroll flash, hover cards, pinch/zoom, anything animated: ask anh
 to try it in the debug build (a recorder probe helps, see fmess-fast-iteration
 in memory).
+
+For what happens when the computer sleeps, the network drops, the encrypted
+chats' worker dies or a notification rings, see the fmess-live-check skill.

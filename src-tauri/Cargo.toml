@@ -28,6 +28,13 @@ tokio = { version = "1.53.3", features = ["time"] }
 # The system's preferred language, for fMess's own words (see i18n.rs).
 sys-locale = "0.3"
 
+[features]
+# Live checks only (tests/app/live-check.sh): lets a debug build's page go
+# through a local proxy (FMESS_PROXY) that can cut the network. On macOS that
+# needs macOS 14 (Network.framework proxies), above fMess's minimum, so it is
+# never in a release build.
+test-proxy = ["tauri/macos-proxy"]
+
 [profile.release]
 codegen-units = 1
 lto = true
