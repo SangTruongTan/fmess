@@ -526,8 +526,11 @@
   }
   for (const input of prefInputs) {
     input.addEventListener('change', () => {
-      if (input.value === 'on') return;
       const name = input.dataset.pref;
+      // Do Not Disturb's "Until 10:00" only shows when it ends. A checkbox's
+      // value is "on" too, so asking every input kept Notification sounds
+      // from ever changing (#43).
+      if (name === 'muteFor' && input.value === 'on') return;
       const value = input.type === 'checkbox' ? input.checked : name === 'muteFor' ? Number(input.value) : input.value;
       invoke('set_messenger_pref', { name, value }).then(() => { errorBox.textContent = ''; }, (err) => { errorBox.textContent = String(err); });
     });
