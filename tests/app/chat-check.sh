@@ -2,7 +2,8 @@
 # Checks how chats look in the real app (macOS, debug build): each kind of chat
 # (encrypted, not encrypted, group) with each Messenger chat theme found
 # (default, gradient, colour), in each fMess look (Messenger, Zalo, WhatsApp,
-# Teams), light and dark. Prints what failed and makes one picture per chat.
+# Teams and any other theme in src-tauri/themes/), light and dark. Prints what
+# failed and makes one picture per chat.
 #
 #   tests/app/chat-check.sh [output dir] [max chats, default 6]
 #
@@ -17,14 +18,18 @@ mkdir -p "$OUT"
 [ -d "$APP" ] || { echo "No debug build at $APP: npx tauri build --debug --bundles app"; exit 1; }
 
 python3 - "$OUT" "$MAX" <<'EOF'
-import json, sys
+import glob, json, os, sys
 out, max_chats = sys.argv[1], int(sys.argv[2])
 themes = {'messenger': None}
-for name in ('zalo', 'whatsapp', 'teams'):
+# The shipped themes first, then any other built theme (a new one being made).
+names = ['zalo', 'whatsapp', 'teams']
+names += sorted(n for n in (os.path.basename(p)[:-4] for p in glob.glob('src-tauri/themes/*.css')) if n not in names)
+for name in names:
     themes[name] = open(f'src-tauri/themes/{name}.css').read()
 probe = open('tests/app/chat-check.js').read()
 probe = probe.replace('__OUT__', json.dumps(out)).replace('__THEMES__', json.dumps(themes)).replace('__MAX_CHATS__', str(max_chats))
 open(f'{out}/probe.js', 'w').write(probe)
+open(f'{out}/looks.txt', 'w').write(' '.join(themes))
 EOF
 
 pkill -f "fMess.app/Contents/MacOS/fmess" || true
@@ -133,19 +138,21 @@ for failure in failures:
 print('FAILED' if failures else 'PASSED', f'({len(failures)} problems)')
 EOF
 
-# One picture per chat: Messenger, Zalo, WhatsApp, Teams; light above, dark below.
+# One picture per chat: Messenger, then each theme; light above, dark below.
+looks=$(cat "$OUT/looks.txt")
+columns=$(echo $looks | wc -w | tr -d ' ')
 for first in "$OUT"/*-messenger-light.png; do
   [ -e "$first" ] || break
   chat=$(basename "$first" -messenger-light.png)
   frames=$(mktemp -d)
   i=1
   for mode in light dark; do
-    for look in messenger zalo whatsapp teams; do
+    for look in $looks; do
       [ -e "$OUT/$chat-$look-$mode.png" ] && ln -s "$OUT/$chat-$look-$mode.png" "$frames/$(printf %02d $i).png"
       i=$((i + 1))
     done
   done
-  ffmpeg -v error -y -i "$frames/%02d.png" -vf "scale=720:-1,tile=4x2:padding=8:color=gray" -frames:v 1 "$OUT/sheet-$chat.png" && echo "sheet: $OUT/sheet-$chat.png"
+  ffmpeg -v error -y -i "$frames/%02d.png" -vf "scale=720:-1,tile=${columns}x2:padding=8:color=gray" -frames:v 1 "$OUT/sheet-$chat.png" && echo "sheet: $OUT/sheet-$chat.png"
   rm -rf "$frames"
 done
 

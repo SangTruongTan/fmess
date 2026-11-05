@@ -18,7 +18,7 @@ theme found:
 |---|---|
 | Chat | encrypted (e2ee), not encrypted, group |
 | Messenger chat theme | default, gradient, colour (and wallpaper) |
-| fMess look | Messenger, Zalo, WhatsApp, Teams (CSS put in the page, nothing saved) |
+| fMess look | Messenger, Zalo, WhatsApp, Teams, and any other theme in `src-tauri/themes/` (CSS put in the page, nothing saved) |
 | Mode | light, dark (Messenger's own setting, put back at the end) |
 | Messages | text bubbles (yours, theirs), quotes, emoji-only ("icons") |
 | Toasts | one of Facebook's own (`cometPushToast`) per look and mode, as a chat named `toast` |

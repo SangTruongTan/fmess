@@ -8,3 +8,7 @@ src-tauri/signing/
 
 # Python (tests/app/net-proxy.py)
 __pycache__/
+
+# A theme's measurements and reference screenshots (.claude/skills/fmess-theme):
+# they come from someone's real account, so they stay on their machine.
+themes/*/spec/
