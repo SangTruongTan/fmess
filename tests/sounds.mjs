@@ -157,6 +157,19 @@ const check = (name, ok, detail) => results.push(`${ok ? 'PASS' : 'FAIL'} ${name
   check('Windows: with no sound from Messenger (its fourth message in a chat), the notification rings', (await w.shouldRing()) === true);
 }
 {
+  const w = world({ platform: 'Win32' });
+  const rang = await w.shouldRing();
+  const sound = w.audio();
+  await w.soundPlayer.play(sound);
+  check("Windows: Messenger's sound coming just after a notification that rang is held back", rang === true && w.sources.length === 0 && !sound.nativePlays, { rang, sources: w.sources.length });
+}
+{
+  const w = world({ platform: 'Win32' });
+  await w.soundPlayer.play(w.audio());
+  await w.shouldRing();
+  check("Windows: a quiet notification doesn't hold Messenger's next sound back", w.sources.length === 1, { sources: w.sources.length });
+}
+{
   const w = world({ platform: 'Win32', soundsOn: false });
   check("Windows: with Messenger's sounds off, the notification is quiet", (await w.shouldRing()) === false);
 }

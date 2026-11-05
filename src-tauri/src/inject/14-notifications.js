@@ -78,17 +78,21 @@
   // Whether a notification rings, on Windows. Messenger asks for no silence,
   // so in a browser its notifications ring with Windows' sound; fMess's were
   // silent, and with Messenger's own sound not playing either, new messages
-  // made no sound at all (#36). Messenger plays its sound (at most three
-  // times a chat) just before it notifies: when that one played, the
-  // notification stays quiet, so a message rings once. macOS and Linux
-  // notifications stay silent, with Messenger's sound.
+  // made no sound at all (#36). Messenger also plays its sound for a new
+  // message (at most three times a chat), around when it notifies: before,
+  // or just after, as it first asks whether its sounds are on. When that
+  // sound just played, the notification stays quiet; when the notification
+  // rings, it holds Messenger's sound back for a moment. Either way a message
+  // rings once. macOS and Linux notifications stay silent, with Messenger's
+  // sound.
   // Live checks on a Mac decide as on Windows (window.__fmessRingAnywhere).
   const ringsHere = /^Win/.test(navigator.platform);
   const shouldRing = async (notification) => {
     if (!(ringsHere || (window.__fmessDebug && window.__fmessRingAnywhere)) || notification.silent || messengerPrefs?.soundsOn === false || isMuted()) return false;
     const sound = lastSound;
-    if (Date.now() - sound.at > 3000) return true;
-    return !(await within(sound.played, 1500));
+    const rings = Date.now() - sound.at > 3000 || !(await within(sound.played, 1500));
+    if (rings) quietSoundsUntil = Date.now() + 3000;
+    return rings;
   };
   const sendNotification = async (notification) => {
     const ring = shouldRing(notification);
