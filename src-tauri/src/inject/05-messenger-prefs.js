@@ -99,6 +99,12 @@
     window.__TAURI_INTERNALS__?.invoke('sync_messenger_prefs', { prefs }).catch(() => {});
     return true;
   };
+  // Live checks (tests/app/live-sound.js) read them, and have them reported
+  // at once after changing them.
+  if (window.__fmessDebug) {
+    window.__fmessReadMessengerPrefs = readMessengerPrefs;
+    window.__fmessReportMessengerPrefs = reportMessengerPrefs;
+  }
   // Right after loading they may not be there yet: try every few seconds.
   const reportOnceRead = async (tries = 0) => {
     if (!(await reportMessengerPrefs()) && tries < 20) setTimeout(() => reportOnceRead(tries + 1), 3000);

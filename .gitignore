@@ -5,3 +5,6 @@ src-tauri/gen/schemas/
 
 # Provisioning profiles for signed macOS builds (tauri.signed.conf.json)
 src-tauri/signing/
+
+# Python (tests/app/net-proxy.py)
+__pycache__/
