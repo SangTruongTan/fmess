@@ -173,12 +173,31 @@
     };
     source.start();
   };
+  // Messenger's latest sound: when it was asked for, and whether it played.
+  // On Windows a notification rings unless that sound just did, and one that
+  // rings holds Messenger's sound back for a moment, should it come after
+  // (see shouldRing): a message rings once.
+  let lastSound = { at: 0, played: Promise.resolve(false) };
+  let quietSoundsUntil = 0;
   HTMLMediaElement.prototype.play = function (...args) {
     const isSound = soundPlayerCalls > 0 && this instanceof HTMLAudioElement && this.src && !this.loop && !this.srcObject;
     if (!isSound) return nativePlay.apply(this, args);
-    if (isMuted()) return Promise.resolve();
+    if (isMuted() || Date.now() < quietSoundsUntil) return Promise.resolve();
     const pauses = pausesOf(this);
-    return playSound(this).catch(() => (pausesOf(this) === pauses ? nativePlay.apply(this, args) : undefined));
+    let played = false;
+    const playing = playSound(this)
+      .then(() => {
+        played = pausesOf(this) === pauses;
+      })
+      .catch(() =>
+        pausesOf(this) === pauses
+          ? nativePlay.apply(this, args).then(() => {
+              played = true;
+            })
+          : undefined,
+      );
+    lastSound = { at: Date.now(), played: playing.then(() => played, () => false) };
+    return playing;
   };
   HTMLMediaElement.prototype.pause = function (...args) {
     if (this instanceof HTMLAudioElement) {

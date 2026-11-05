@@ -219,6 +219,11 @@ pub fn update_settings<R: Runtime>(
     Ok(view(&app, settings))
 }
 
+/// Whether Messenger's sounds are on, as the page last said (on until it has).
+pub fn messenger_sounds_on<R: Runtime>(app: &AppHandle<R>) -> bool {
+    app.state::<MessengerPrefsState>().0.lock().unwrap().as_ref().map_or(true, |prefs| prefs.sounds_on)
+}
+
 /// Called by inject.js with Messenger's Preferences, which the phone app or
 /// Messenger's own dialog may have changed.
 #[tauri::command]
