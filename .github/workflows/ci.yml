@@ -29,8 +29,9 @@ jobs:
       - run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
       # Parts of the page script against fakes (Node is on every runner): the
       # reply from a notification, fMess's own notification, Messenger's sounds,
-      # the photo viewer's zoom.
+      # the photo viewer's zoom, getting Messenger back by itself.
       - run: node tests/notification-reply.mjs
       - run: node tests/fallback-notification.mjs
       - run: node tests/sounds.mjs
       - run: node tests/viewer-zoom.mjs
+      - run: node tests/recover.mjs
