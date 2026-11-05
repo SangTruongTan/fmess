@@ -147,7 +147,14 @@ button's box: hide its `svg *` and paint in its place (template.md).
    five preview colours) → `@font-face` (if allowed) → `--<app>-*` tokens on `:root` and
    `html[data-fmess-dark]` → Messenger variable remap → font stack → strip → rail → unread
    → viewer → list → chat background → header → dates → bubbles → composer → details →
-   the two island blocks.
+   the two island blocks. Facebook draws some things the other way round from the page
+   (toasts such as "All chats loaded." or "Link copied", some tooltips): `.__fb-dark-mode`
+   islands on a light page, `.__fb-light-mode` islands on a dark one. A remap on
+   `.__fb-dark-mode, .__fb-light-mode` puts the page's colours into them, so add both
+   island blocks: `html:not([data-fmess-dark]) .__fb-dark-mode` (light text, icons) and
+   `html[data-fmess-dark] .__fb-light-mode` (dark text, icons), and reset there any button
+   face the theme remaps (`--secondary-button-background`: a toast's close button). 0.1.33
+   shipped white text on white toasts in dark mode in all three themes.
 3. Values come from the spec files, not from memory. Where the spec says UNMEASURED, choose
    and leave a `/* UNMEASURED: … */` comment.
 4. **Fonts:** bundle only openly licensed ones (Roboto, Apache 2.0, was fine for
@@ -168,17 +175,21 @@ button's box: hide its `svg *` and paint in its place (template.md).
    spec. Fix, rebuild CSS, repeat until the regions match.
 4. Languages: run the aria-label rewrite probe. `changed` must be empty, and every
    aria-label selector must have a mark beside it.
-5. Look at tooltips (light and dark), the ⋯ menu, the reaction picker, the photo viewer, the
+5. Run `tests/app/chat-check.sh` (skill fmess-chat-check): bubbles, quotes, emoji
+   messages and **toasts** (text and close button) in every look, light and dark, on the
+   pictures' pixels. Keep the debug window in view while it runs: Facebook shows no toast
+   in a hidden page, and the check then fails with `no toast showed`.
+6. Look at tooltips (light and dark), the ⋯ menu, the reaction picker, the photo viewer, the
    call buttons (look only), the reply bar (open, measure, cancel in the same probe), a group
    chat, a link preview, the details pane, and the `--fmess-title-bar: 0` case.
-6. Performance: no `:has()` left of a combinator and none nested, full-chat pictures on a
+7. Performance: no `:has()` left of a combinator and none nested, full-chat pictures on a
    `will-change` layer, and `tools/bench.js` (scroll, opening chats) the same with and
    without the theme. Since 0.1.28 fMess draws up to 120 fps on a 120 Hz Mac: compare
    with a no-theme run, not with 60.
-7. Hide profile pictures (Settings › Appearance) on: fMess swaps people's pictures with
+8. Hide profile pictures (Settings › Appearance) on: fMess swaps people's pictures with
    `content: url(<initials svg>)`, so the theme must not use `content:` on them; resizing
    them with `zoom` or sizes is fine. Look at the list, header, messages and typing dots.
-8. Restore: kill the debug app, copy the backup over `settings.json`,
+9. Restore: kill the debug app, copy the backup over `settings.json`,
    `open -a /Applications/fMess.app`, close your Chrome tabs.
 
 ## 6. Ship (in ~/projects/herald)
@@ -247,6 +258,8 @@ button's box: hide its `svg *` and paint in its place (template.md).
 - [ ] Light and dark match the references region by region at 880×600
 - [ ] No themed style depends on an English label; the rewrite probe shows no change
 - [ ] Tooltips are readable in both modes; viewer, calls, reply bar and details are fine
+- [ ] `tests/app/chat-check.sh` passes, toasts included (text readable, close button
+      visible, light and dark: both island blocks)
 - [ ] Nothing the theme draws shows over a photo (`tools/viewer.js`); typing dots line up
       with the messages; Hide profile pictures on still looks right
 - [ ] `tools/bench.js` with the theme matches a no-theme run

@@ -501,3 +501,13 @@ html:not([data-fmess-dark]) .__fb-dark-mode {
   --primary-icon: #e4e6eb !important;
   --secondary-icon: #b0b3b8 !important;
 }
+
+/* And its light islands on a dark page (toasts again: Facebook draws them the
+   other way round from the page) keep their dark text: the page's light
+   text made them white on white. */
+html[data-fmess-dark] .__fb-light-mode {
+  --primary-text: #050505 !important;
+  --secondary-text: #65676b !important;
+  --primary-icon: #050505 !important;
+  --secondary-icon: #65676b !important;
+}
