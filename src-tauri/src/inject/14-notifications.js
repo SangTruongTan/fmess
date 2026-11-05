@@ -82,9 +82,10 @@
   // times a chat) just before it notifies: when that one played, the
   // notification stays quiet, so a message rings once. macOS and Linux
   // notifications stay silent, with Messenger's sound.
+  // Live checks on a Mac decide as on Windows (window.__fmessRingAnywhere).
   const ringsHere = /^Win/.test(navigator.platform);
   const shouldRing = async (notification) => {
-    if (!ringsHere || notification.silent || messengerPrefs?.soundsOn === false || isMuted()) return false;
+    if (!(ringsHere || (window.__fmessDebug && window.__fmessRingAnywhere)) || notification.silent || messengerPrefs?.soundsOn === false || isMuted()) return false;
     const sound = lastSound;
     if (Date.now() - sound.at > 3000) return true;
     return !(await within(sound.played, 1500));

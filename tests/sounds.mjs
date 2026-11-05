@@ -72,7 +72,7 @@ function world({ fetchFails = false, fetchDelay = 0, nativeFails = false, platfo
     if (fetchFails) throw new Error('offline');
     return { ok: true, arrayBuffer: async () => 'bytes' };
   };
-  const env = { HTMLMediaElement, HTMLAudioElement, AudioContext, fetch, isMuted: () => w.muted, navigator: { platform }, messengerPrefs: { soundsOn } };
+  const env = { HTMLMediaElement, HTMLAudioElement, AudioContext, fetch, isMuted: () => w.muted, navigator: { platform }, messengerPrefs: { soundsOn }, window: {} };
   const run = new Function(...Object.keys(env), `let soundPlayerCalls = 0;\n${sounds}${within}${ring}return ({ ${patch} shouldRing });`);
   // Messenger's SoundPlayer: play() plays one of its elements, at once.
   const exports = {

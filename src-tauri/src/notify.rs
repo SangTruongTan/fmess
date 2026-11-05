@@ -47,9 +47,10 @@ pub async fn notify<R: Runtime>(
 ) -> Result<(), String> {
     #[cfg(debug_assertions)]
     eprintln!(
-        "[fmess] notify #{id}: {title} (thread {:?}, group {})",
+        "[fmess] notify #{id}: {title} (thread {:?}, group {}, sound {})",
         message.as_ref().map(|message| &message.thread),
-        message.as_ref().is_some_and(|message| message.group.is_some())
+        message.as_ref().is_some_and(|message| message.group.is_some()),
+        sound.unwrap_or(false)
     );
     let settings = settings::current(&app);
     if !settings.notifications {
