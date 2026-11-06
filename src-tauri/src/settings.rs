@@ -329,6 +329,8 @@ pub fn page_settings<R: Runtime>(app: &AppHandle<R>, settings: &Settings) -> Str
         "spellCheck": settings.spell_check,
         "theme": themes::for_page(app, settings.theme.as_deref()),
         "font": settings.font(),
+        // The added files of that font (Settings › Font › Add…).
+        "fontFaces": crate::fonts::faces_for(app, settings.font()),
         "paneWidths": settings.pane_widths,
         // For the notifications the page writes itself.
         "lang": Lang::from_setting(settings.language.as_deref()),

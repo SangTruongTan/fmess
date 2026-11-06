@@ -108,6 +108,7 @@
   select:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   button { cursor: pointer; }
   .controls { display: flex; gap: 6px; }
+  #font { max-width: 190px; }
   .themes {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -306,13 +307,16 @@
         <option value="2">200%</option>
       </select>
     </label>
-    <label class="row">
+    <div class="row">
       <span class="label"><span data-i18n="font">Font</span>
-        <span class="hint" id="font-hint" data-i18n="fontHint">For Messenger's text and the message box, over the theme's. Any font on this computer; empty keeps the usual one.</span>
+        <span class="hint" id="font-hint" data-i18n="fontHint">For Messenger's text and the message box, over the theme's. Pick one this computer has, or add a .ttf or .otf file.</span>
       </span>
-      <input type="text" data-key="font" list="fonts" maxlength="80" spellcheck="false" autocomplete="off">
-      <datalist id="fonts"></datalist>
-    </label>
+      <span class="controls">
+        <select data-key="font" id="font" aria-label="Font" data-i18n-label="font"></select>
+        <button type="button" id="add-font" data-i18n="add">Add…</button>
+        <button type="button" id="remove-font" data-i18n="remove" hidden>Remove</button>
+      </span>
+    </div>
     <div class="row">
       <span class="label"><span data-i18n="theme">Theme</span>
         <span class="hint" data-i18n="themeHint">How Messenger looks. Add a theme from a .css file.</span>
@@ -434,7 +438,7 @@
     appearance: 'Giao diện',
     textSize: 'Cỡ chữ',
     font: 'Phông chữ',
-    fontHint: 'Cho chữ trong Messenger và ô nhắn tin, thay cho phông của theme. Phông nào có trên máy cũng được, để trống thì giữ như cũ.',
+    fontHint: 'Cho chữ trong Messenger và ô nhắn tin, thay cho phông của theme. Chọn phông có sẵn trên máy, hoặc thêm file .ttf, .otf.',
     theme: 'Theme',
     themeHint: 'Giao diện của Messenger. Thêm theme từ file .css.',
     add: 'Thêm…',
@@ -490,9 +494,12 @@
       const value = view[input.dataset.key];
       // The settings are read again every few seconds; don't undo typing.
       if (input.type === 'text' && input === document.activeElement) continue;
+      // Its list is filled with it (fillFonts).
+      if (input === fontSelect) continue;
       if (input.type === 'checkbox') input.checked = Boolean(value);
       else input.value = String(value ?? '');
     }
+    fillFonts(view.font);
     showFont();
     for (const row of document.querySelectorAll('[data-needs]')) {
       const enabled = Boolean(view[row.dataset.needs]);
@@ -634,10 +641,11 @@
     const { launchAtLogin, platform, messenger, lang: _, ...settings } = current;
     for (const input of inputs) {
       const key = input.dataset.key;
-      // The language is "en", "vi" or none (Automatic); the other selects are numbers.
+      // The language is "en", "vi" or none (Automatic), the font a name or
+      // none (Usual); the other selects are numbers.
       const value =
         input.type === 'checkbox' ? input.checked
-        : input.type === 'text' || key === 'language' ? input.value.trim() || null
+        : input.type === 'text' || key === 'language' || key === 'font' ? input.value.trim() || null
         : Number(input.value);
       if (key === 'launchAtLogin') continue;
       settings[key] = value;
@@ -654,37 +662,102 @@
 
   for (const input of inputs) input.addEventListener('change', save);
 
-  // The font field shows its text in the font typed, and says when this
-  // computer doesn't have it. Its list holds the usual fonts the computer has.
-  const fontInput = document.querySelector('[data-key="font"]');
+  // Font: Usual, the fonts added from files, then the fonts this computer
+  // has. The system lists some names CSS doesn't know (its hidden fonts), so
+  // only the fonts text can be set in are listed: text set in a font measures
+  // unlike the fallback's, with at least one of three fallbacks (a font can
+  // be one of them). A saved font in neither list (typed in an earlier
+  // version, or removed since) stays, with a warning.
+  const fontSelect = document.getElementById('font');
   const fontHint = document.getElementById('font-hint');
-  const fontFamilies = (text) => text.split(',').map((family) => family.trim().replace(/^["']|["']$/g, '').replace(/["\\\n]/g, '')).filter(Boolean);
-  // A font is on the computer when text set in it measures unlike the
-  // fallback's, with at least one of three fallbacks (a font can be one of them).
+  const familiesOf = (font) => String(font ?? '').split(',').map((family) => family.trim().replace(/^["']|["']$/g, '').replace(/["\\\n]/g, '')).filter(Boolean);
+  const sameName = (a, b) => a.toLowerCase() === b.toLowerCase();
   const measure = document.createElement('canvas').getContext('2d');
   const widthIn = (family) => {
     measure.font = `40px ${family}`;
     return measure.measureText('mmmmmmmmmmlli WwQq 0123 ĐđẮắỹ').width;
   };
-  const installed = (family) => ['monospace', 'serif', 'sans-serif'].some((fallback) => widthIn(`"${family}", ${fallback}`) !== widthIn(fallback));
-  const COMMON_FONTS = [
-    'Inter', 'Roboto', 'Open Sans', 'Noto Sans', 'Lato', 'Montserrat', 'Nunito', 'Poppins', 'Be Vietnam Pro',
-    'Lexend', 'Source Sans 3', 'IBM Plex Sans', 'Fira Sans', 'Ubuntu', 'Cantarell', 'DejaVu Sans',
-    'Liberation Sans', 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', 'Helvetica', 'Avenir Next',
-    'Segoe UI', 'Segoe UI Variable Text', 'Arial', 'Verdana', 'Tahoma', 'Calibri', 'Georgia',
-  ];
-  document.getElementById('fonts').append(...COMMON_FONTS.filter(installed).map((family) => new Option(family)));
+  const FALLBACKS = ['monospace', 'serif', 'sans-serif'];
+  let fallbackWidths = null;
+  const installed = (family) => {
+    fallbackWidths ??= FALLBACKS.map(widthIn);
+    return FALLBACKS.some((fallback, i) => widthIn(`"${family}", ${fallback}`) !== fallbackWidths[i]);
+  };
+  let fonts = { installed: [], added: [] };
+  let fontsShown = null;
+  const isAdded = (family) => fonts.added.some((name) => sameName(name, family));
+  function fillFonts(saved) {
+    const shown = JSON.stringify([fonts, saved ?? '', lang]);
+    if (shown === fontsShown) return;
+    fontsShown = shown;
+    const option = (family, text = family) => {
+      const choice = new Option(text, family);
+      if (family) choice.style.fontFamily = `"${family}", system-ui, sans-serif`;
+      return choice;
+    };
+    const group = (label, families) => {
+      const box = document.createElement('optgroup');
+      box.label = label;
+      box.append(...families.map((family) => option(family)));
+      return box;
+    };
+    const choices = [option('', say('Usual', 'Mặc định'))];
+    const listed = (family) => fonts.added.concat(fonts.installed).some((name) => sameName(name, family));
+    if (saved && !listed(saved)) choices.push(option(saved));
+    if (fonts.added.length) choices.push(group(say('Added', 'Đã thêm'), fonts.added));
+    if (fonts.installed.length) choices.push(group(say('On this computer', 'Trên máy'), fonts.installed));
+    fontSelect.replaceChildren(...choices);
+    fontSelect.value = [...fontSelect.options].find((choice) => sameName(choice.value, saved ?? ''))?.value ?? '';
+  }
+  // The select shows the font picked in that font (an added one in the
+  // system's: this window doesn't load the file); Remove is for added fonts.
   function showFont() {
-    const families = fontFamilies(fontInput.value);
-    fontInput.style.fontFamily = families.length ? `${families.map((family) => `"${family}"`).join(', ')}, system-ui, sans-serif` : '';
-    fontInput.placeholder = say('Usual', 'Mặc định');
-    const missing = families.length > 0 && !families.some(installed);
+    const families = familiesOf(fontSelect.value);
+    fontSelect.style.fontFamily = families.length ? `${families.map((family) => `"${family}"`).join(', ')}, system-ui, sans-serif` : '';
+    const added = families.some(isAdded);
+    document.getElementById('remove-font').hidden = !added;
+    const missing = families.length > 0 && !added && !families.some(installed);
     fontHint.classList.toggle('warning', missing);
     fontHint.innerHTML = missing
       ? say("This computer doesn't have this font, so Messenger keeps its own.", 'Máy này không có phông chữ này nên Messenger vẫn giữ phông cũ.')
       : (lang === 'vi' ? VI.fontHint : english.get(fontHint) ?? fontHint.innerHTML);
   }
-  fontInput.addEventListener('input', showFont);
+  fontSelect.addEventListener('change', showFont);
+  async function loadFonts() {
+    try {
+      const list = await invoke('list_fonts');
+      fonts = { added: list.added, installed: list.installed.filter(installed) };
+    } catch {}
+    fontsShown = null;
+    if (current) {
+      fillFonts(current.font);
+      showFont();
+    }
+  }
+  loadFonts();
+  document.getElementById('add-font').addEventListener('click', async () => {
+    try {
+      const family = await invoke('add_font');
+      if (!family) return;
+      await loadFonts();
+      fillFonts(family);
+      await save();
+    } catch (err) {
+      showError(err);
+    }
+  });
+  document.getElementById('remove-font').addEventListener('click', async () => {
+    const family = familiesOf(fontSelect.value).find(isAdded);
+    if (!family) return;
+    try {
+      await invoke('remove_font', { family });
+      await loadFonts();
+      fillFonts(null);
+      await save();
+    } catch (err) {
+      showError(err);
+    }
+  });
   document.getElementById('test-notification').addEventListener('click', () => {
     const result = document.getElementById('test-result');
     invoke('test_notification').then(

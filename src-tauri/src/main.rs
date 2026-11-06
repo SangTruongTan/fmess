@@ -4,6 +4,7 @@
 mod about;
 mod badge;
 mod downloads;
+mod fonts;
 mod i18n;
 mod icon;
 mod links;
@@ -74,6 +75,9 @@ fn main() {
             themes::list_themes,
             themes::add_theme,
             themes::remove_theme,
+            fonts::list_fonts,
+            fonts::add_font,
+            fonts::remove_font,
             icon::choose_app_icon,
             icon::reset_app_icon,
             update::check_for_updates,
