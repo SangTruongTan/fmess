@@ -461,6 +461,82 @@ html[data-fmess-dark] {
   font-size: 15px !important;
 }
 
+/* Editing a message: WhatsApp's edit box. The X before the title; the box a
+   pill like the composer's, the smiley first; ✓ in a green circle beside it,
+   grey until the text changes. */
+[role="main"] [data-fmess-ui="edit-bar"] {
+  padding: 12px 20px 4px !important;
+}
+[role="main"] [data-fmess-ui="edit-bar"] > div:has([data-fmess-ui="edit-cancel"]) {
+  order: -1;
+  margin: 0 10px 0 -6px !important;
+}
+[role="main"] [data-fmess-ui="edit-bar"] h3 span {
+  color: var(--wa-text) !important;
+  font-weight: 500 !important;
+}
+[role="main"] [data-fmess-ui="edit-cancel"] svg {
+  color: var(--wa-icon) !important;
+}
+[role="main"] [data-fmess-ui="edit-box"] {
+  padding: 4px 12px 12px !important;
+}
+[role="main"] [data-fmess-ui="edit-box"] > div {
+  align-items: center !important;
+  gap: 8px;
+}
+[role="main"] div:has(> [data-fmess-ui="edit-field"]) {
+  margin: 0 !important;
+  border-radius: 26px !important;
+  background: transparent !important;
+}
+[role="main"] [data-fmess-ui="edit-field"] {
+  min-height: 52px !important;
+  padding: 0 12px 0 6px !important;
+  box-sizing: border-box !important;
+  align-items: center !important;
+  border-radius: 26px !important;
+  background: var(--wa-composer) !important;
+  box-shadow: 0 1px 6px var(--wa-shadow) !important;
+}
+[role="main"] [data-fmess-ui="edit-field"] > div:has([data-fmess-ui="edit-emoji"]) {
+  order: -1;
+}
+[role="main"] [data-fmess-ui="edit-field"] [role="textbox"] {
+  font-size: 15px !important;
+}
+[role="main"] [data-fmess-ui="edit-emoji"] {
+  width: 40px !important;
+  height: 40px !important;
+}
+[role="main"] [data-fmess-ui="edit-emoji"] svg {
+  width: 24px !important;
+  height: 24px !important;
+  background: var(--wa-icon);
+  -webkit-mask: {{icon:wds-ic-sticker-smiley}} center / 24px 24px no-repeat;
+}
+[role="main"] [data-fmess-ui="edit-done"] {
+  width: 48px !important;
+  height: 48px !important;
+  border-radius: 24px !important;
+  background: var(--wa-green) !important;
+}
+[role="main"] [data-fmess-ui="edit-done"] svg {
+  width: 24px !important;
+  height: 24px !important;
+  background: var(--wa-on-green);
+  -webkit-mask: {{icon:ic-check}} center / 24px 24px no-repeat;
+}
+[role="main"] [data-fmess-ui="edit-done"][aria-disabled="true"] {
+  background: var(--wa-input) !important;
+}
+[role="main"] [data-fmess-ui="edit-done"][aria-disabled="true"] svg {
+  background: var(--wa-text-2);
+}
+[role="main"] :is([data-fmess-ui="edit-emoji"], [data-fmess-ui="edit-done"]) svg * {
+  visibility: hidden;
+}
+
 /* Details: WhatsApp's "Contact info". */
 [role="main"] [data-fmess-ui="details"] {
   background: var(--wa-panel) !important;
