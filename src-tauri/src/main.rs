@@ -84,9 +84,9 @@ fn main() {
         .on_menu_event(menu::handle)
         .setup(|app| {
             let handle = app.handle();
-            #[cfg(windows)]
-            notify::register_app_id(handle);
             let settings = settings::init(handle);
+            #[cfg(windows)]
+            notify::register_app_id(handle, settings.app_name());
             handle.set_theme(settings::messenger_theme(settings.messenger_dark_mode.as_deref()));
             webview::create_main_window(handle, &settings)?;
             menu::install(handle)?;

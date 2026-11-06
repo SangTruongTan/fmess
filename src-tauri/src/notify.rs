@@ -126,12 +126,23 @@ pub fn test_notification<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
 /// Windows shows notifications only from apps it knows by their app ID
 /// (AppUserModelID): the installer's Start menu shortcut carries it, but the
 /// MSI's doesn't, and a copy run from elsewhere has none. So fMess registers
-/// the ID itself, with its name and icon, and runs under it.
+/// the ID itself, with its name and icon, and runs under it. The name is the
+/// one at the top of each notification: the App name from Settings.
 #[cfg(windows)]
-pub fn register_app_id<R: Runtime>(app: &AppHandle<R>) {
-    use windows_sys::Win32::{
-        System::Registry::{RegCloseKey, RegCreateKeyExW, RegSetValueExW, HKEY, HKEY_CURRENT_USER, KEY_WRITE, REG_OPTION_NON_VOLATILE, REG_SZ},
-        UI::Shell::SetCurrentProcessExplicitAppUserModelID,
+pub fn register_app_id<R: Runtime>(app: &AppHandle<R>, name: &str) {
+    use windows_sys::Win32::UI::Shell::SetCurrentProcessExplicitAppUserModelID;
+
+    let id = app.config().identifier.encode_utf16().chain(Some(0)).collect::<Vec<u16>>();
+    unsafe { SetCurrentProcessExplicitAppUserModelID(id.as_ptr()) };
+    name_app_id(app, name);
+}
+
+/// Writes the app ID's name and icon where Windows reads them for each
+/// notification; called again when the App name changes in Settings.
+#[cfg(windows)]
+pub fn name_app_id<R: Runtime>(app: &AppHandle<R>, name: &str) {
+    use windows_sys::Win32::System::Registry::{
+        RegCloseKey, RegCreateKeyExW, RegSetValueExW, HKEY, HKEY_CURRENT_USER, KEY_WRITE, REG_OPTION_NON_VOLATILE, REG_SZ,
     };
 
     let wide = |text: &str| text.encode_utf16().chain(Some(0)).collect::<Vec<u16>>();
@@ -141,9 +152,7 @@ pub fn register_app_id<R: Runtime>(app: &AppHandle<R>) {
         let _ = icon.parent().map(std::fs::create_dir_all);
         let _ = std::fs::write(icon, include_bytes!("../icons/128x128@2x.png"));
     }
-    let id_wide = wide(&id);
     unsafe {
-        SetCurrentProcessExplicitAppUserModelID(id_wide.as_ptr());
         let mut key: HKEY = std::ptr::null_mut();
         let path = wide(&format!(r"Software\Classes\AppUserModelId\{id}"));
         let opened = RegCreateKeyExW(
@@ -160,12 +169,12 @@ pub fn register_app_id<R: Runtime>(app: &AppHandle<R>) {
         if opened != 0 {
             return;
         }
-        let set = |name: &str, value: &str| {
-            let name = wide(name);
+        let set = |value_name: &str, value: &str| {
+            let value_name = wide(value_name);
             let value = wide(value);
-            RegSetValueExW(key, name.as_ptr(), 0, REG_SZ, value.as_ptr().cast(), (value.len() * 2) as u32);
+            RegSetValueExW(key, value_name.as_ptr(), 0, REG_SZ, value.as_ptr().cast(), (value.len() * 2) as u32);
         };
-        set("DisplayName", &app.package_info().name);
+        set("DisplayName", name);
         if let Some(icon) = icon {
             set("IconUri", &icon.to_string_lossy());
         }

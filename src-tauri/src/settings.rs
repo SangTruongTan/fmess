@@ -346,8 +346,9 @@ pub fn set_custom_icon<R: Runtime>(app: &AppHandle<R>, on: bool) -> Result<(), S
     change(app, |settings| settings.custom_icon = on).map(drop)
 }
 
-/// Renames fMess's open windows and tray icon; the Dock, the menu bar and the
-/// Start menu keep the name it was installed with.
+/// Renames fMess's open windows and tray icon, and on Windows the name at the
+/// top of its notifications; the Dock, the menu bar and the Start menu keep
+/// the name it was installed with, and so do macOS's notifications.
 fn apply_app_name<R: Runtime>(app: &AppHandle<R>, name: &str) {
     for (label, window) in app.webview_windows() {
         if label != SETTINGS_WINDOW {
@@ -355,6 +356,8 @@ fn apply_app_name<R: Runtime>(app: &AppHandle<R>, name: &str) {
         }
     }
     menu::set_tooltip(app, name);
+    #[cfg(windows)]
+    crate::notify::name_app_id(app, name);
 }
 
 /// Changes the settings and saves them. The lock is held from reading to
