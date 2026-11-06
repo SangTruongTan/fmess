@@ -56,15 +56,21 @@ Facebook translates its aria-labels: a Vietnamese Facebook says "Tìm kiếm", n
 A theme that matched only English labels broke for those users (commit 396bd90). fMess
 therefore marks the parts themes style by where they are and by their icons. `markUi()`
 runs every second (`syncPanes`) and after each click, and the composer is marked again on
-input, so a fresh DOM may go up to a second without its marks.
+input, so a fresh DOM may go up to a second without its marks. A mark that no longer fits
+(the composer gone, the edit box closed) is taken off on the same run.
 
 | Mark | Element | Found by |
 |---|---|---|
-| `composer` | the message box row: `[role=region]` holding the contenteditable `[role=textbox]` in `[role=main]` | structure |
+| `composer` | the message box row: `[role=region]` holding the contenteditable `[role=textbox]` in `[role=main]`. Not marked while a message is edited (Facebook's edit box has no region of its own); a mark that no longer fits is taken off | structure |
 | `composer-bar` | the composer's previous sibling: the reply bar / link preview bar | structure |
 | `voice-clip`, `attach`, `sticker`, `gif`, `emoji` | composer buttons | start of their `svg path d` (`COMPOSER_ICONS`). Breaks if Facebook redraws an icon. |
 | `like` / `send` | the button in the composer's last `<span>`: `like` while it holds an `<img>` (the chat's quick reaction) or Messenger's own thumbs-up `<svg>` (its path starts `M16,9.1c`, `THUMBS_UP` in 09-marks.js), `send` otherwise | structure, re-marked on input. **History (0.1.21):** the default thumbs-up used to be marked `send` on an empty box, and a theme that showed `send` as a send button sent a 👍. It is `like` now; still check the composer in a chat whose quick reaction is the default 👍. |
 | `more-actions` | any other composer button outside the text field. While typing, Messenger folds attach/sticker/gif into one "+", which gets this mark. | structure |
+| `edit-composer` | while a message is edited, Facebook's edit box in the composer's place: two rows, `edit-bar` then `edit-box` | from the text box outwards: each step the next box with another `[role=button]` in it (field, row, this), below the box holding `[role=log]` |
+| `edit-bar` | its first row: the title ("Edit message", an `h3`) and `edit-cancel` (X) | structure |
+| `edit-box` | its second row; its child is the row of `edit-field` and `edit-done` | structure |
+| `edit-field` | the text box and `edit-emoji`; its parent has Facebook's 20px corners | structure |
+| `edit-done` | ✓, which saves. `[aria-disabled="true"]` until the text changes | structure |
 | `chat-header` | the header row above `[role=log]` | ancestor of `info` |
 | `info` | header button with `aria-expanded` that opens the details. `[aria-expanded="true"]` while they're open. | structure |
 | `audio-call`, `video-call` | the two svg buttons just before `info` on the same line (only marked when exactly two) | position |
