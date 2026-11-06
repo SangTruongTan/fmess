@@ -31,6 +31,11 @@ grep -rn "data-fmess\|--fmess\|fmess-account\|UNDER_EVERY_THEME" src-tauri/src/i
 - **UNDER_EVERY_THEME**: makes `[data-fmess-ui="composer-bar"]` (the reply / link preview
   bar above the box) and its two inner div levels `height: auto`, with 8px bottom padding,
   so larger type doesn't overflow. Don't set fixed heights there.
+- **Settings › Font** (`applyFont`, `<style id="fmess-font">`): a font the user picks
+  replaces the theme's `font-family`. It is set on
+  `html:root :is(div, span, a, p, h1…h6, li, input, textarea, button, label)` with
+  `!important`, which outweighs the usual `html :is(div, span, …)` font rule of a theme. The
+  theme's sizes, weights and pseudo-element fonts stay.
 
 ## Attributes and variables fMess sets
 
