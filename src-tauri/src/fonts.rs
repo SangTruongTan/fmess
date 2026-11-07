@@ -275,4 +275,43 @@ mod tests {
         let read = files.iter().filter_map(|path| read_face(&fs::read(path).ok()?)).count();
         assert!(read * 10 >= files.len() * 9, "read {read} of {} font files", files.len());
     }
+
+    #[test]
+    fn an_added_file_is_kept_beside_one_of_the_same_name() {
+        let mut db = fontdb::Database::new();
+        db.load_system_fonts();
+        let fonts: Vec<PathBuf> = db
+            .faces()
+            .filter_map(|face| match &face.source {
+                fontdb::Source::File(path) if path.extension().is_some_and(|ext| ext == "ttf") => Some(path.clone()),
+                _ => None,
+            })
+            .filter(|path| fs::metadata(path).is_ok_and(|meta| meta.len() <= MAX_FILE))
+            .collect();
+        // Two that differ (by size, to be sure).
+        let size = |path: &PathBuf| fs::metadata(path).map(|meta| meta.len()).unwrap_or(0);
+        let fonts: Vec<PathBuf> = fonts.first().into_iter().chain(fonts.iter().find(|path| size(path) != size(&fonts[0]))).cloned().collect();
+        let [first, second] = fonts.as_slice() else {
+            return eprintln!("fewer than two .ttf system fonts: skipped");
+        };
+        let from = std::env::temp_dir().join(format!("fmess-font-test-{}", std::process::id()));
+        let dir = from.join("fonts");
+        fs::create_dir_all(from.join("a")).unwrap();
+        fs::create_dir_all(from.join("b")).unwrap();
+        // Two different fonts both named Regular.ttf, and the first again.
+        let (a, b) = (from.join("a/Regular.ttf"), from.join("b/Regular.ttf"));
+        fs::copy(first, &a).unwrap();
+        fs::copy(second, &b).unwrap();
+        fs::create_dir_all(&dir).unwrap();
+        let family = add_file(&a, &dir, Lang::En).unwrap();
+        add_file(&b, &dir, Lang::En).unwrap();
+        assert_eq!(add_file(&a, &dir, Lang::En).unwrap(), family);
+        let mut kept: Vec<_> = fs::read_dir(&dir).unwrap().map(|entry| entry.unwrap().file_name()).collect();
+        kept.sort();
+        assert_eq!(kept, ["Regular-2.ttf", "Regular.ttf"]);
+        let not_a_font = from.join("a/notes.ttf");
+        fs::write(&not_a_font, "not a font").unwrap();
+        assert!(add_file(&not_a_font, &dir, Lang::En).is_err());
+        fs::remove_dir_all(&from).unwrap();
+    }
 }
