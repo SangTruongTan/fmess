@@ -1104,6 +1104,72 @@ html[data-fmess-chats] [role="main"] [data-fmess-ui="composer"]:focus-within {
   line-height: 20px !important;
 }
 
+/* Editing a message: Teams' box again, with ✓ (save) in it after the emoji
+   button, in the brand colour once the text has changed; the bar above it
+   with the title and X (cancel), lined up with the box. */
+html[data-fmess-chats] [role="main"] [data-fmess-ui="edit-composer"] {
+  align-items: stretch !important;
+  background: var(--tm-card) !important;
+}
+html[data-fmess-chats] [role="main"] [data-fmess-ui="edit-bar"] {
+  padding: 8px 32px 6px !important;
+}
+html[data-fmess-chats] [role="main"] [data-fmess-ui="edit-bar"] h3 span {
+  color: var(--tm-fg1) !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+}
+html[data-fmess-chats] [role="main"] [data-fmess-ui="edit-box"] {
+  padding: 0 32px 24px !important;
+}
+html[data-fmess-chats] [role="main"] [data-fmess-ui="edit-box"] > div {
+  min-height: 46px !important;
+  padding: 0 6px 0 0 !important;
+  box-sizing: border-box !important;
+  align-items: center !important;
+  border: 1px solid var(--tm-composer-line) !important;
+  border-radius: 6px !important;
+  background: var(--tm-card) !important;
+}
+html[data-fmess-chats] [role="main"] [data-fmess-ui="edit-box"] > div:focus-within {
+  box-shadow: inset 0 -4px 0 -2px var(--tm-focus-line) !important;
+}
+html[data-fmess-chats] [role="main"] :is(div:has(> [data-fmess-ui="edit-field"]), [data-fmess-ui="edit-field"]) {
+  margin: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  align-items: center !important;
+}
+[data-fmess-ui="edit-field"] [role="textbox"] {
+  font-size: 14px !important;
+  line-height: 20px !important;
+}
+[role="main"] :is([data-fmess-ui="edit-cancel"], [data-fmess-ui="edit-emoji"], [data-fmess-ui="edit-done"]) {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 4px !important;
+  background: transparent !important;
+  --hover-overlay: transparent !important;
+}
+[role="main"] :is([data-fmess-ui="edit-cancel"], [data-fmess-ui="edit-emoji"], [data-fmess-ui="edit-done"]) svg {
+  width: 16px !important;
+  height: 16px !important;
+  background: var(--tm-fg2);
+}
+[role="main"] :is([data-fmess-ui="edit-cancel"], [data-fmess-ui="edit-emoji"], [data-fmess-ui="edit-done"]) svg * {
+  visibility: hidden;
+}
+[role="main"] :is([data-fmess-ui="edit-cancel"], [data-fmess-ui="edit-emoji"], [data-fmess-ui="edit-done"]:not([aria-disabled="true"])):hover svg,
+[role="main"] [data-fmess-ui="edit-done"]:not([aria-disabled="true"]) svg {
+  background: var(--tm-brand-icon);
+}
+[role="main"] [data-fmess-ui="edit-cancel"] svg { -webkit-mask: {{icon:dismiss-20-regular}} center / 16px 16px no-repeat; }
+[role="main"] [data-fmess-ui="edit-cancel"]:hover svg { -webkit-mask-image: {{icon:dismiss-20-filled}}; }
+[role="main"] [data-fmess-ui="edit-emoji"] svg { -webkit-mask: {{icon:ns-emoji-regular}} center / 16px 16px no-repeat; }
+[role="main"] [data-fmess-ui="edit-emoji"]:hover svg { -webkit-mask-image: {{icon:ns-emoji-filled}}; }
+[role="main"] [data-fmess-ui="edit-done"] svg { -webkit-mask: {{icon:checkmark-20-regular}} center / 16px 16px no-repeat; }
+[role="main"] [data-fmess-ui="edit-done"][aria-disabled="true"] svg { opacity: 0.5; }
+
 /* Replying (or a link's preview): Teams puts the quote inside the message
    box. The bar above the box and the box read as one bordered box, the bar
    its top part, its content Teams' quote card: light grey, a grey bar on
