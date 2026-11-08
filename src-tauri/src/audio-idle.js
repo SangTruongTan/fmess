@@ -2,7 +2,8 @@
 // page and in its hidden proxy frame, and WebKit's open output session stops
 // the Mac from idle sleeping (coreaudiod's PreventUserIdleSystemSleep). So
 // a context is suspended while no sound plays and resumed when one starts.
-// Contexts that take a stream (calls) are left alone.
+// Contexts that take a stream (calls), a media element, a worklet or a script
+// processor are left alone: their sound isn't scheduled by start().
 (() => {
   if (window.__fmessAudioIdle || window.opener) return;
   window.__fmessAudioIdle = true;
@@ -26,12 +27,24 @@
       constructor(...args) {
         super(...args);
         contexts.add(this);
+        const addModule = this.audioWorklet?.addModule;
+        if (addModule) {
+          this.audioWorklet.addModule = (...moduleArgs) => (streaming.add(this), addModule.apply(this.audioWorklet, moduleArgs));
+        }
         this.addEventListener('statechange', () => this.state === 'running' && scheduleSuspend(this));
         scheduleSuspend(this);
       }
       createMediaStreamSource(...args) {
         streaming.add(this);
         return super.createMediaStreamSource(...args);
+      }
+      createMediaElementSource(...args) {
+        streaming.add(this);
+        return super.createMediaElementSource(...args);
+      }
+      createScriptProcessor(...args) {
+        streaming.add(this);
+        return super.createScriptProcessor(...args);
       }
     };
   }
