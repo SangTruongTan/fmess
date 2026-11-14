@@ -7,6 +7,10 @@
 (() => {
   if (window.__fmessAudioIdle || window.opener) return;
   window.__fmessAudioIdle = true;
+  // The browser's own timers: Facebook's, swapped in once its scripts load,
+  // can't clear a timer made before them (#51).
+  const setTimeout = window.setTimeout.bind(window);
+  const clearTimeout = window.clearTimeout.bind(window);
   const IDLE_MS = 3000;
   const timers = new WeakMap();
   const streaming = new WeakSet();
